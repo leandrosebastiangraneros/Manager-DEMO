@@ -22,20 +22,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create tables
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+    logger.info("Database tables verified/created")
+except Exception as e:
+    logger.error(f"Error creating tables: {e}")
 
-app = FastAPI(title="NovaManager API")
+# Dynamically set root_path for Vercel
+root_path = "/api" if os.getenv("VERCEL") else ""
+app = FastAPI(title="NovaManager API", root_path=root_path)
 
 # Security: Restrict CORS to known frontends (dev and prod)
 # Security: Restrict CORS to known frontends (dev and prod)
-# For initial deployment flexibility, we allow all.Restrict this in strict production.
-origins = [
-    "http://localhost:5173",
-    "http://localhost:5500",
-    "http://127.0.0.1:5173",
-    "https://leandrosebastiangraneros.github.io",
-    "https://portfolio-hazel-five-14.vercel.app"
-]
+# For initial deployment flexibility, we allow all.
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -957,7 +957,8 @@ def generate_accounting_report(month: int, year: int, db: Session = Depends(get_
 
     # --- PDF GENERATION ---
     filename = f"Reporte_Contable_{year}_{month}.pdf"
-    filepath = f"storage/{filename}"
+    # Use /tmp for Vercel compatibility
+    filepath = os.path.join("/tmp", filename)
     
     doc = SimpleDocTemplate(filepath, pagesize=A4)
     elements = []
