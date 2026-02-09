@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+    html,
+    body,
+    #root {
+        height: 100%;
+        overflow: hidden;
+        /* Prevent native scroll */
+    }
+
+    html {
+        background-color: #000000;
+    }
+
+    body {
+        @apply bg-void text-txt-primary font-sans antialiased text-base leading-relaxed;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-void;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-surface-highlight rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-txt-dim;
+    }
+}
+
+@layer components {
+
+    /* Minimalist Glass Utilities */
+    .glass-panel {
+        @apply bg-glass backdrop-blur-md border border-glass-border shadow-2xl;
+    }
+
+    .glass-panel-hover {
+        @apply transition-all duration-300 hover:bg-white/5 hover:border-white/10;
+    }
+
+    .text-glow {
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    }
+}
+
+/* Global Animations */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Ocultar Spinners Numéricos */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
