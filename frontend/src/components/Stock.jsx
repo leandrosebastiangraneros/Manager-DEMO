@@ -334,11 +334,11 @@ const Stock = () => {
                 <form onSubmit={handleAddSubmit} className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Nombre del Producto</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre del Producto</label>
                             <input
                                 autoFocus
                                 type="text"
-                                className="w-full px-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none text-white transition-all placeholder:text-txt-dim"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black transition-all placeholder:text-gray-400"
                                 placeholder="ej. Cerveza Patagonia"
                                 value={newItemName}
                                 onChange={e => setNewItemName(e.target.value)}
@@ -346,9 +346,9 @@ const Stock = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Categoría</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
                             <select
-                                className="w-full px-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none text-white transition-all"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black transition-all"
                                 value={newItemCategoryId}
                                 onChange={e => setNewItemCategoryId(e.target.value)}
                             >
@@ -362,22 +362,22 @@ const Stock = () => {
 
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Cantidad</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cantidad</label>
                             <input
                                 type="number"
-                                className="w-full px-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none text-white font-mono transition-all"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black font-mono transition-all"
                                 value={newItemQuantity}
                                 onChange={e => setNewItemQuantity(e.target.value)}
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Costo Total</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Costo Total</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-dim font-bold">$</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none text-white font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemCost}
                                     onChange={e => setNewItemCost(e.target.value)}
@@ -386,12 +386,12 @@ const Stock = () => {
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Precio Venta (Unit)</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Precio Venta (Unit)</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-success font-bold">$</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-success focus:ring-1 focus:ring-success outline-none text-white font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-black font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}
@@ -402,16 +402,16 @@ const Stock = () => {
                     </div>
 
                     {newItemQuantity > 0 && newItemCost > 0 && (
-                        <div className="bg-accent/5 p-4 rounded-lg border border-accent/10 text-center">
-                            <p className="text-xs text-accent">
-                                Costo Unitario Calculado: <span className="text-lg font-bold font-mono block mt-1">{formatMoney(newItemCost / newItemQuantity)}</span>
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+                            <p className="text-xs text-gray-500">
+                                Costo Unitario Calculado: <span className="text-lg font-bold font-mono text-black block mt-1">{formatMoney(newItemCost / newItemQuantity)}</span>
                             </p>
                         </div>
                     )}
 
-                    <div className="flex gap-4 pt-4 border-t border-white/5">
-                        <Button variant="ghost" onClick={() => setIsAddModalOpen(false)} className="flex-1">Cancelar</Button>
-                        <Button type="submit" variant="neon" className="flex-1">Confirmar Agregado</Button>
+                    <div className="flex gap-4 pt-4 border-t border-gray-100">
+                        <Button variant="ghost" onClick={() => setIsAddModalOpen(false)} className="flex-1 text-gray-500 hover:text-black hover:bg-gray-100">Cancelar</Button>
+                        <Button type="submit" variant="primary" className="flex-1 shadow-lg shadow-black/20">Confirmar Agregado</Button>
                     </div>
                 </form>
             </Modal>
@@ -420,102 +420,107 @@ const Stock = () => {
             <Modal
                 isOpen={isSellModalOpen}
                 onClose={() => setIsSellModalOpen(false)}
-                className="max-w-xl"
+                className="max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 p-0 overflow-hidden"
             >
-                <div className="border-b border-panel-border flex justify-between items-center mb-6 pb-2">
-                    <h2 className="text-lg font-display font-bold text-white flex items-center gap-2 uppercase tracking-tighter">
-                        <span className="material-icons text-white">monetization_on</span>
-                        Vender / Salida de Producto
+                <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-black flex items-center gap-2">
+                        <span className="material-icons text-green-600">monetization_on</span>
+                        Registrar Venta
                     </h2>
+                    <button onClick={() => setIsSellModalOpen(false)} className="text-gray-400 hover:text-black transition-colors">
+                        <span className="material-icons">close</span>
+                    </button>
                 </div>
 
-                <div className="p-4 bg-surface-highlight rounded-lg border border-white/5 mb-6">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <div className="text-[10px] text-txt-dim uppercase font-bold tracking-widest mb-1">Item Seleccionado</div>
-                            <div className="text-white font-bold text-lg">{selectedItem?.name}</div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-[10px] text-txt-dim uppercase font-bold tracking-widest mb-1">Costo Unit.</div>
-                            <div className="text-txt-secondary font-mono text-sm">{formatMoney(selectedItem?.unit_cost)}</div>
+                <div className="p-6 space-y-6">
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Item Seleccionado</div>
+                                <div className="text-black font-bold text-lg">{selectedItem?.name}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Costo Unit.</div>
+                                <div className="text-gray-600 font-mono text-sm">{formatMoney(selectedItem?.unit_cost)}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <form onSubmit={handleSellSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Cant. a Vender</label>
-                            <input
-                                autoFocus
-                                type="number"
-                                className="w-full px-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-success focus:ring-1 focus:ring-success outline-none text-white font-mono transition-all"
-                                value={sellQuantity}
-                                onChange={e => setSellQuantity(e.target.value)}
-                                max={selectedItem?.quantity}
-                                min="0.1"
-                                step="0.1"
-                                required
-                            />
-                            <p className="text-[10px] text-txt-dim mt-2 text-right">Disponible: {selectedItem?.quantity}</p>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Precio de Venta (Unit)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-success font-bold">$</span>
+                    <form onSubmit={handleSellSubmit} className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cant. a Vender</label>
                                 <input
+                                    autoFocus
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight border border-white/10 rounded-xl focus:border-success focus:ring-1 focus:ring-success outline-none text-white font-mono transition-all"
-                                    placeholder="0.00"
-                                    value={sellPriceUnit}
-                                    onChange={e => setSellPriceUnit(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none text-black font-mono transition-all"
+                                    value={sellQuantity}
+                                    onChange={e => setSellQuantity(e.target.value)}
+                                    max={selectedItem?.quantity}
+                                    min="0.1"
+                                    step="0.1"
                                     required
                                 />
+                                <p className="text-[10px] text-gray-400 mt-2 text-right">Disponible: {selectedItem?.quantity}</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Precio de Venta (Unit)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
+                                    <input
+                                        type="number"
+                                        className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none text-black font-mono transition-all"
+                                        placeholder="0.00"
+                                        value={sellPriceUnit}
+                                        onChange={e => setSellPriceUnit(e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {sellPriceUnit > 0 && sellPriceUnit < selectedItem?.unit_cost && (
-                        <div className="bg-orange-500/10 p-3 rounded-lg border border-orange-500/20 flex gap-3 items-start animate-pulse">
-                            <span className="material-icons text-orange-500 text-sm mt-0.5">warning</span>
-                            <div>
-                                <h4 className="text-orange-400 font-bold text-xs uppercase">Alerta de Pérdida</h4>
-                                <p className="text-[10px] text-orange-500/80">
-                                    Vendiendo bajo costo ({formatMoney(selectedItem.unit_cost)}).
+                        {sellPriceUnit > 0 && sellPriceUnit < selectedItem?.unit_cost && (
+                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200 flex gap-3 items-start animate-pulse">
+                                <span className="material-icons text-orange-500 text-sm mt-0.5">warning</span>
+                                <div>
+                                    <h4 className="text-orange-700 font-bold text-xs uppercase">Alerta de Pérdida</h4>
+                                    <p className="text-[10px] text-orange-600">
+                                        Vendiendo bajo costo ({formatMoney(selectedItem.unit_cost)}).
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {sellPriceUnit >= selectedItem?.unit_cost && (
+                            <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
+                                <p className="text-xs text-green-700">
+                                    Ganancia Est. / Unit: <span className="text-lg font-bold font-mono block mt-1">{formatMoney(sellPriceUnit - selectedItem.unit_cost)}</span>
                                 </p>
                             </div>
+                        )}
+
+                        <div>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Descripción de la Venta / Destino</label>
+                            <textarea
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-black outline-none text-black font-medium transition-all placeholder:text-gray-400 resize-none h-20 text-sm rounded-xl"
+                                placeholder="ej. Venta Cliente Bronce / Consumo Interno"
+                                value={workDesc}
+                                onChange={e => setWorkDesc(e.target.value)}
+                                required
+                            />
                         </div>
-                    )}
 
-                    {sellPriceUnit >= selectedItem?.unit_cost && (
-                        <div className="bg-success/10 p-4 rounded-lg border border-success/20 text-center">
-                            <p className="text-xs text-success">
-                                Ganancia Est. / Unit: <span className="text-lg font-bold font-mono block mt-1">{formatMoney(sellPriceUnit - selectedItem.unit_cost)}</span>
-                            </p>
+                        <div className="flex items-center justify-between bg-black p-4 rounded-xl shadow-lg shadow-black/20">
+                            <span className="text-gray-400 text-xs uppercase font-bold tracking-widest">Ingreso Total</span>
+                            <span className="text-2xl font-mono font-bold text-white">{formatMoney((parseFloat(sellQuantity) || 0) * (parseFloat(sellPriceUnit) || 0))}</span>
                         </div>
-                    )}
 
-                    <div>
-                        <label className="block text-xs font-mono font-bold text-txt-dim uppercase tracking-widest mb-2">Descripción de la Venta / Destino</label>
-                        <textarea
-                            className="w-full px-4 py-3 bg-surface-highlight border border-panel-border focus:border-white outline-none text-white font-medium transition-all placeholder:text-txt-dim resize-none h-20 text-sm"
-                            placeholder="ej. Venta Cliente Bronce / Consumo Interno"
-                            value={workDesc}
-                            onChange={e => setWorkDesc(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-lg border border-white/5">
-                        <span className="text-txt-dim text-xs uppercase font-bold tracking-widest">Ingreso Total</span>
-                        <span className="text-2xl font-mono font-bold text-success">{formatMoney((parseFloat(sellQuantity) || 0) * (parseFloat(sellPriceUnit) || 0))}</span>
-                    </div>
-
-                    <div className="flex gap-4 pt-2 border-t border-white/5">
-                        <Button variant="ghost" onClick={() => setIsSellModalOpen(false)} className="flex-1">Cancelar</Button>
-                        <Button type="submit" variant="primary" className="flex-1 hover:bg-success hover:text-black">Confirmar Venta</Button>
-                    </div>
-                </form>
+                        <div className="flex gap-4 pt-2 border-t border-gray-100">
+                            <Button variant="ghost" onClick={() => setIsSellModalOpen(false)} className="flex-1 text-gray-500 hover:text-black hover:bg-gray-100">Cancelar</Button>
+                            <Button type="submit" variant="primary" className="flex-1 shadow-lg shadow-green-900/20 bg-black text-white hover:bg-gray-900">Confirmar Venta</Button>
+                        </div>
+                    </form>
+                </div>
             </Modal>
         </div>
     );

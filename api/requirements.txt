@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy
+reportlab
+python-multipart
+python-dotenv
+gunicorn
+psycopg2-binary
