@@ -1,5 +1,5 @@
 // Configuración dinámica de la URL de la API
-let API_URL = import.meta.env.VITE_API_URL || "https://novamanager-backend.onrender.com";
+let API_URL = "/api";
 
 // Detección automática de entorno local
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
