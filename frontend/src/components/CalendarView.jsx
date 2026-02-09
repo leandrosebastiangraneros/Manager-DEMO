@@ -17,7 +17,7 @@ const CalendarView = () => {
             const res = await fetch(`${API_URL}/calendar/events`);
             if (res.ok) {
                 const data = await res.json();
-                setEvents(data);
+                setEvents(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             console.error(err);

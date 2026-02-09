@@ -37,7 +37,7 @@ const ActiveTrips = () => {
             const res = await fetch(`${API_URL}/trips`);
             const data = await res.json();
             // Store ALL trips
-            setAllTrips(data);
+            setAllTrips(Array.isArray(data) ? data : []);
 
             // Get Price for estimation
             const priceRes = await fetch(`${API_URL}/config/meter_price`);

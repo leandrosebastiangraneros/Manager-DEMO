@@ -14,9 +14,8 @@ const Historial = () => {
     const fetchTransactions = () => {
         setLoading(true);
         fetch(`${API_URL}/transactions?limit=200`)
-            .then(res => res.json())
             .then(data => {
-                setTransactions(data);
+                setTransactions(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
             .catch(err => {

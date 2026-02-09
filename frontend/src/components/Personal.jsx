@@ -37,9 +37,8 @@ const Personal = () => {
     const fetchGroups = () => {
         setLoading(true);
         fetch(`${API_URL}/employee-groups`)
-            .then(res => res.json())
             .then(data => {
-                setGroups(data);
+                setGroups(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
             .catch(err => {
@@ -50,8 +49,7 @@ const Personal = () => {
 
     const fetchStock = () => {
         fetch(`${API_URL}/stock`)
-            .then(res => res.json())
-            .then(data => setStock(data.filter(i => i.quantity > 0)))
+            .then(data => setStock((Array.isArray(data) ? data : []).filter(i => i.quantity > 0)))
             .catch(err => console.error("Error stock:", err));
     };
 

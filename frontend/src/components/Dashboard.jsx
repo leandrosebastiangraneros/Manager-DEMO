@@ -46,7 +46,8 @@ const Dashboard = () => {
 
             // 2. Operations (Trips) & Activity Feed
             if (tripsRes.ok) {
-                const trips = await tripsRes.json();
+                const rawTrips = await tripsRes.json();
+                const trips = Array.isArray(rawTrips) ? rawTrips : [];
                 const active = trips.filter(t => t.status === 'OPEN').length;
                 setOperations({
                     activeTrips: active,
@@ -76,13 +77,13 @@ const Dashboard = () => {
             let totalEmps = 0;
             if (empsRes.ok) {
                 const emps = await empsRes.json();
-                totalEmps = emps.length;
+                totalEmps = Array.isArray(emps) ? emps.length : 0;
             }
 
             let presentCount = 0;
             if (attRes.ok) {
                 const attData = await attRes.json();
-                presentCount = attData.filter(a => a.is_present).length;
+                presentCount = (Array.isArray(attData) ? attData : []).filter(a => a.is_present).length;
             }
 
             setAttendance({
@@ -93,7 +94,7 @@ const Dashboard = () => {
             // 4. Stock Alerts
             if (stockRes.ok) {
                 const items = await stockRes.json();
-                const depleted = items.filter(i => i.quantity <= 0);
+                const depleted = (Array.isArray(items) ? items : []).filter(i => i.quantity <= 0);
                 setStockAlerts(depleted);
             }
 

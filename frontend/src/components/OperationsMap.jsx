@@ -47,7 +47,7 @@ const OperationsMap = () => {
                 const res = await fetch(`${API_URL}/trips`);
                 const data = await res.json();
                 // Filter active trips with coords
-                const active = data.filter(t => t.status === 'OPEN' && t.destination_lat && t.destination_lng);
+                const active = (Array.isArray(data) ? data : []).filter(t => t.status === 'OPEN' && t.destination_lat && t.destination_lng);
                 setTrips(active);
             } catch (err) {
                 console.error("Map data error", err);

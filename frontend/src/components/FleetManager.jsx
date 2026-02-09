@@ -27,7 +27,7 @@ const FleetManager = () => {
             const res = await fetch(`${API_URL}/vehicles`);
             if (res.ok) {
                 const data = await res.json();
-                setVehicles(data);
+                setVehicles(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             console.error(err);
