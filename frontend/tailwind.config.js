@@ -7,37 +7,43 @@ export default {
     theme: {
         extend: {
             colors: {
-                // "Void & Light" Monochromatic Palette
-                'void': '#000000',      // Absolute Zero
-                'surface': '#050505',   // Deepest Grey
-                'surface-highlight': '#121212', // Slightly lighter
-                'glass': 'rgba(255, 255, 255, 0.03)',
-                'glass-border': 'rgba(255, 255, 255, 0.2)', // Higher contrast for B&W
+                // "Ergonomic Grayscale" Light Palette
+                'void': '#F2F2F2',      // Soft Off-White Background
+                'surface': '#FFFFFF',   // Pure White for Cards (depth)
+                'surface-highlight': '#E5E7EB', // Soft Gray for Inputs
+                'panel-border': '#1A1A1A', // Carbon border
 
-                // Accents - Pure White
-                'accent': '#FFFFFF',        // Pure White
-                'accent-dim': 'rgba(255, 255, 255, 0.1)',
-                'accent-glow': 'rgba(255, 255, 255, 0.5)',
-
-                'secondary': '#808080',     // Mid Grey
+                // Accents - Carbon Gray
+                'accent': '#1A1A1A',
+                'accent-dim': '#4B5563',
 
                 // Text
-                'txt-primary': '#ffffff',
-                'txt-secondary': '#a0a0a0', // Light Grey
-                'txt-dim': '#505050',       // Dark Grey
+                'txt-primary': '#1A1A1A',
+                'txt-secondary': '#374151',
+                'txt-dim': '#6B7280',
 
-                // Functional - High Contrast Grayscale
-                'success': '#FFFFFF', // White for success (rely on context/icon)
-                'error': '#FFFFFF',   // White for error (rely on context/icon)
+                // Functional
+                'success': '#1A1A1A',
+                'error': '#1A1A1A',
             },
             fontFamily: {
                 'sans': ['Inter', 'sans-serif'],
                 'mono': ['JetBrains Mono', 'monospace'],
-                'display': ['Inter', 'sans-serif'], // Switched to Inter for maximum readability and formal look
+                'display': ['Inter', 'sans-serif'],
             },
-            backgroundImage: {
-                'void-gradient': 'radial-gradient(circle at center, #1a1a1a 0%, #000000 100%)',
-                'accent-gradient': 'linear-gradient(135deg, #ffffff 0%, #808080 100%)',
+            borderRadius: {
+                'none': '0',
+                'sm': '0',
+                'md': '0',
+                'lg': '0',
+                'xl': '0',
+                '2xl': '0',
+                '3xl': '0',
+                'full': '9999px', // Mantener para elementos circulares (avatares, puntos de estado)
+            },
+            boxShadow: {
+                'flat': 'none',
+                'professional': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             }
         },
     },

@@ -11,21 +11,20 @@
     #root {
         height: 100%;
         overflow: hidden;
-        /* Prevent native scroll */
     }
 
     html {
-        background-color: #000000;
+        background-color: #F2F2F2;
     }
 
     body {
-        @apply bg-void text-txt-primary font-sans antialiased text-base leading-relaxed;
+        @apply bg-void text-txt-primary font-sans antialiased text-sm leading-tight;
     }
 
-    /* Custom Scrollbar */
+    /* Professional Scrollbar */
     ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 4px;
+        height: 4px;
     }
 
     ::-webkit-scrollbar-track {
@@ -33,7 +32,7 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        @apply bg-surface-highlight rounded-full;
+        @apply bg-panel-border;
     }
 
     ::-webkit-scrollbar-thumb:hover {
@@ -43,35 +42,27 @@
 
 @layer components {
 
-    /* Minimalist Glass Utilities */
-    .glass-panel {
-        @apply bg-glass backdrop-blur-md border border-glass-border shadow-2xl;
+    /* Flat Terminal Style Panels */
+    .flat-panel {
+        @apply bg-void border-2 border-panel-border;
+        box-shadow: 4px 4px 0px 0px rgba(26, 26, 26, 0.5);
+        /* Sombra suavizada */
     }
 
-    .glass-panel-hover {
-        @apply transition-all duration-300 hover:bg-white/5 hover:border-white/10;
+    .flat-panel-hover {
+        @apply transition-all duration-200 hover:-translate-y-0.5 hover:-translate-x-0.5;
+        box-shadow: 6px 6px 0px 0px rgba(26, 26, 26, 0.6);
     }
 
+    /* Remove glow effects */
     .text-glow {
-        text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+        text-shadow: none;
     }
 }
 
-/* Global Animations */
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.animate-float {
-    animation: float 6s ease-in-out infinite;
+/* Global Transitions */
+.transition-standard {
+    @apply transition-all duration-200 ease-in-out;
 }
 
 /* Ocultar Spinners Numéricos */
@@ -84,4 +75,10 @@ input[type=number]::-webkit-outer-spin-button {
 input[type=number] {
     -moz-appearance: textfield;
     appearance: textfield;
+}
+
+/* Custom Scrollbar Utility */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #000000 #FFFFFF;
 }
