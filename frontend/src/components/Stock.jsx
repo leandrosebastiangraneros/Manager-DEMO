@@ -26,6 +26,7 @@ const Stock = () => {
     const [newItemCost, setNewItemCost] = useState('');
     const [newItemQuantity, setNewItemQuantity] = useState('1');
     const [newItemSellingPrice, setNewItemSellingPrice] = useState('');
+    const [newItemPackPrice, setNewItemPackPrice] = useState('');
     const [newItemCategoryId, setNewItemCategoryId] = useState('');
     const [categories, setCategories] = useState([]);
     const [draftItems, setDraftItems] = useState([]);
@@ -75,9 +76,10 @@ const Stock = () => {
         setNewItemCost(item.unit_cost); // O el costo que prefieras mostrar al editar
         setNewItemQuantity(item.quantity);
         setNewItemSellingPrice(item.selling_price);
+        setNewItemPackPrice(item.pack_price || '');
         setNewItemCategoryId(item.category_id || '');
-        setIsPack(false);
-        setPackSize('1');
+        setIsPack(item.is_pack || false);
+        setPackSize(item.pack_size || '1');
         setIsAddModalOpen(true);
     };
 
@@ -101,6 +103,7 @@ const Stock = () => {
             cost_amount: cost,
             quantity: qty,
             selling_price: sellPrice,
+            pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
             category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
         };
 
@@ -112,6 +115,7 @@ const Stock = () => {
         setNewItemCost('');
         setNewItemQuantity('1');
         setNewItemSellingPrice('');
+        setNewItemPackPrice('');
         setSelectedExisting(null);
         setSearchTerm('');
     };
@@ -169,6 +173,7 @@ const Stock = () => {
             cost_amount: cost,
             initial_quantity: qty,
             selling_price: sellPrice,
+            pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
             category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
         };
 
@@ -370,15 +375,27 @@ const Stock = () => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Venta Sug. Unit.</label>
-                                <input
-                                    type="number"
-                                    className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono text-green-600 font-bold"
-                                    value={newItemSellingPrice}
-                                    onChange={e => setNewItemSellingPrice(e.target.value)}
-                                    required
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Venta Sug. Unit.</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono text-green-600 font-bold"
+                                        value={newItemSellingPrice}
+                                        onChange={e => setNewItemSellingPrice(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Venta Sug. Pack</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono text-green-600 font-bold"
+                                        value={newItemPackPrice}
+                                        onChange={e => setNewItemPackPrice(e.target.value)}
+                                        placeholder="Opcional"
+                                    />
+                                </div>
                             </div>
 
                             <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-sm bg-void text-white">
@@ -518,14 +535,18 @@ const Stock = () => {
                             <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Costo Unit.</label>
                             <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Precio Venta</label>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Unid.</label>
                             <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Pack</label>
+                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
                         </div>
                     </div>
                     <div className="pt-4 flex gap-3">

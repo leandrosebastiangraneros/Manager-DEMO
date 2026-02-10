@@ -37,6 +37,7 @@ class StockItemBase(BaseModel):
     cost_amount: float
     initial_quantity: float
     selling_price: Optional[float] = None
+    pack_price: Optional[float] = None
     category_id: Optional[int] = None
 
 class StockItemCreate(StockItemBase):
@@ -82,10 +83,10 @@ class MaterialUsage(MaterialUsageBase):
     sale_tx_id: Optional[int] = None
     class Config:
         from_attributes = True
-
 class BatchSaleItem(BaseModel):
     item_id: int
     quantity: float
+    is_pack: bool = False
 
 class BatchSaleRequest(BaseModel):
     items: List[BatchSaleItem]

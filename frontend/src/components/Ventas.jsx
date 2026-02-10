@@ -58,27 +58,41 @@ const Ventas = () => {
         }
     };
 
-    const updateCart = (productId, qty) => {
+    const updateCart = (productId, qty, type = 'unit') => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
+        const cartKey = `${productId}_${type}`;
         const newQty = parseFloat(qty) || 0;
-        if (newQty > product.quantity) {
+
+        // Stock check
+        const unitsNeeded = type === 'pack' ? newQty * (product.pack_size || 1) : newQty;
+
+        // Need to account for current quantity of OTHER type of the same product in cart
+        const otherType = type === 'unit' ? 'pack' : 'unit';
+        const otherKey = `${productId}_${otherType}`;
+        const otherQty = cart[otherKey] || 0;
+        const otherUnits = otherType === 'pack' ? otherQty * (product.pack_size || 1) : otherQty;
+
+        if (unitsNeeded + otherUnits > product.quantity) {
             toast.error(`Stock insuficiente para ${product.name}`);
             return;
         }
 
-        setCart(prev => {
-            // Permitimos que el valor sea 0 o vacío momentáneamente sin borrar el ítem
-            // El borrado real se hace con el botón 'delete'
-            return { ...prev, [productId]: newQty };
-        });
+        setCart(prev => ({ ...prev, [cartKey]: newQty }));
     };
 
     const calculateTotal = () => {
-        return Object.entries(cart).reduce((sum, [id, qty]) => {
+        return Object.entries(cart).reduce((sum, [key, qty]) => {
+            const [id, type] = key.split('_');
             const product = products.find(p => p.id === parseInt(id));
-            return sum + (product?.selling_price || 0) * qty;
+            if (!product) return sum;
+
+            const price = type === 'pack'
+                ? (product.pack_price || (product.selling_price * product.pack_size))
+                : (product.selling_price || 0);
+
+            return sum + price * qty;
         }, 0);
     };
 
@@ -87,10 +101,16 @@ const Ventas = () => {
         setSubmitting(true);
         try {
             const payload = {
-                items: Object.entries(cart).map(([id, qty]) => ({
-                    item_id: parseInt(id),
-                    quantity: qty
-                })),
+                items: Object.entries(cart)
+                    .filter(([_, qty]) => qty > 0)
+                    .map(([key, qty]) => {
+                        const [id, type] = key.split('_');
+                        return {
+                            item_id: parseInt(id),
+                            quantity: qty,
+                            is_pack: type === 'pack'
+                        };
+                    }),
                 description: description
             };
 
@@ -196,38 +216,59 @@ const Ventas = () => {
                                     {section.items.map(product => {
                                         const inCart = cart[product.id] > 0;
                                         return (
-                                            <button
+                                            <div
                                                 key={product.id}
-                                                onClick={() => updateCart(product.id, (cart[product.id] || 0) + 1)}
                                                 className={`
-                                                    text-left relative p-5 rounded-2xl transition-all duration-200 flex flex-col justify-between h-28
-                                                    ${inCart
-                                                        ? 'bg-accent text-void shadow-xl scale-[1.02] ring-2 ring-offset-2 ring-accent'
-                                                        : 'bg-surface text-txt-primary hover:shadow-lg border border-gray-100/10 hover:border-gray-200'}
+                                                    text-left relative p-0 rounded-2xl transition-all duration-200 flex flex-col justify-between overflow-hidden border border-gray-100/10 hover:border-gray-200 bg-surface group
+                                                    ${(cart[`${product.id}_unit`] > 0 || cart[`${product.id}_pack`] > 0) ? 'ring-2 ring-accent ring-offset-2' : 'hover:shadow-lg'}
                                                 `}
                                             >
-                                                <div className="flex justify-between items-start w-full">
-                                                    <span className={`font-bold text-sm leading-snug pr-2 line-clamp-2 ${inCart ? 'text-void' : 'text-txt-primary'}`}>
-                                                        {product.name}
-                                                    </span>
-                                                    {inCart && (
-                                                        <span className="bg-white text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm min-w-[24px] text-center">
-                                                            {cart[product.id]}
+                                                {/* Card Header: Name + Badge */}
+                                                <div className="p-4 pb-2">
+                                                    <div className="flex justify-between items-start w-full">
+                                                        <span className="font-bold text-xs leading-tight pr-2 line-clamp-2 text-txt-primary">
+                                                            {product.name}
                                                         </span>
-                                                    )}
+                                                        <div className="flex flex-col gap-1 items-end">
+                                                            {cart[`${product.id}_unit`] > 0 && (
+                                                                <span className="bg-accent text-void text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                                                                    {cart[`${product.id}_unit`]} U
+                                                                </span>
+                                                            )}
+                                                            {cart[`${product.id}_pack`] > 0 && (
+                                                                <span className="bg-void text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                                                                    {cart[`${product.id}_pack`]} P
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
 
-                                                <div className="flex justify-between items-end w-full mt-2">
-                                                    <div className="flex flex-col">
-                                                        <span className={`text-[10px] font-medium uppercase tracking-wide ${inCart ? 'text-void/60' : 'text-txt-dim'}`}>
-                                                            Stock: {product.quantity}
-                                                        </span>
+                                                {/* Action Area */}
+                                                <div className="px-4 pb-4">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="text-[9px] font-medium uppercase text-txt-dim">Stock: {product.quantity}</span>
+                                                        <span className="text-[10px] font-mono font-bold text-txt-primary">{formatMoney(product.selling_price)}</span>
                                                     </div>
-                                                    <span className={`font-mono font-bold text-sm ${inCart ? 'text-void' : 'text-txt-primary'}`}>
-                                                        {formatMoney(product.selling_price)}
-                                                    </span>
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
+                                                            className="py-2 px-1 bg-surface-highlight hover:bg-accent hover:text-void rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-panel-border/50"
+                                                        >
+                                                            <span>UNIDAD</span>
+                                                        </button>
+                                                        {product.pack_size > 1 && (
+                                                            <button
+                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
+                                                                className="py-2 px-1 bg-void text-white hover:bg-gray-800 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-white/10"
+                                                            >
+                                                                <span>PACK x{product.pack_size}</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -267,55 +308,66 @@ const Ventas = () => {
                                 <p className="text-sm font-medium">Su carrito está vacío</p>
                             </div>
                         ) : (
-                            Object.entries(cart).map(([id, qty]) => {
-                                const product = products.find(p => p.id === parseInt(id));
-                                if (!product) return null;
-                                return (
-                                    <div key={id} className="flex items-center gap-4 group">
-                                        {/* Qty Controls - Manual Input */}
-                                        <div className="flex flex-col items-center bg-surface rounded-lg shadow-sm border border-gray-100/10 overflow-hidden w-12">
-                                            <input
-                                                type="number"
-                                                className="w-full text-center h-10 text-xs font-bold font-mono text-txt-primary bg-transparent outline-none border-b border-gray-100"
-                                                value={qty}
-                                                onChange={(e) => updateCart(product.id, e.target.value)}
-                                                min="0.1"
-                                                step="0.1"
-                                            />
-                                            <div className="flex w-full">
-                                                <button
-                                                    onClick={() => updateCart(product.id, qty + 1)}
-                                                    className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors border-r border-gray-100"
-                                                >
-                                                    <span className="material-icons text-[10px]">add</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => updateCart(product.id, Math.max(0, qty - 1))}
-                                                    className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
-                                                >
-                                                    <span className="material-icons text-[10px]">remove</span>
-                                                </button>
-                                            </div>
-                                        </div>
+                            Object.entries(cart)
+                                .filter(([_, qty]) => qty > 0)
+                                .map(([cartKey, qty]) => {
+                                    const [id, type] = cartKey.split('_');
+                                    const product = products.find(p => p.id === parseInt(id));
+                                    if (!product) return null;
 
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-txt-primary text-sm font-bold truncate">{product.name}</div>
-                                            <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
-                                                <span className="font-mono">{formatMoney(product.selling_price)}</span>
-                                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                <span>Subtotal: {formatMoney(product.selling_price * qty)}</span>
-                                            </div>
-                                        </div>
+                                    const price = type === 'pack'
+                                        ? (product.pack_price || (product.selling_price * product.pack_size))
+                                        : (product.selling_price || 0);
 
-                                        <button
-                                            onClick={() => updateCart(product.id, 0)}
-                                            className="text-gray-300 hover:text-red-500 transition-colors p-2"
-                                        >
-                                            <span className="material-icons text-lg">delete_outline</span>
-                                        </button>
-                                    </div>
-                                );
-                            })
+                                    return (
+                                        <div key={cartKey} className="flex items-center gap-4 group">
+                                            {/* Qty Controls - Manual Input */}
+                                            <div className="flex flex-col items-center bg-surface rounded-lg shadow-sm border border-gray-100/10 overflow-hidden w-12">
+                                                <input
+                                                    type="number"
+                                                    className="w-full text-center h-10 text-xs font-bold font-mono text-txt-primary bg-transparent outline-none border-b border-gray-100"
+                                                    value={qty}
+                                                    onChange={(e) => updateCart(product.id, e.target.value, type)}
+                                                    min="0.1"
+                                                    step="0.1"
+                                                />
+                                                <div className="flex w-full">
+                                                    <button
+                                                        onClick={() => updateCart(product.id, qty + 1, type)}
+                                                        className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors border-r border-gray-100"
+                                                    >
+                                                        <span className="material-icons text-[10px]">add</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateCart(product.id, Math.max(0, qty - 1), type)}
+                                                        className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
+                                                    >
+                                                        <span className="material-icons text-[10px]">remove</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-txt-primary text-sm font-bold truncate">
+                                                    {type === 'pack' ? <span className="text-[10px] bg-void text-white px-1 rounded mr-1">P</span> : <span className="text-[10px] bg-accent text-void px-1 rounded mr-1">U</span>}
+                                                    {product.name}
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+                                                    <span className="font-mono">{formatMoney(price)}</span>
+                                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                    <span>Subtotal: {formatMoney(price * qty)}</span>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => updateCart(product.id, 0, type)}
+                                                className="text-gray-300 hover:text-red-500 transition-colors p-2"
+                                            >
+                                                <span className="material-icons text-lg">delete_outline</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })
                         )}
                     </div>
 

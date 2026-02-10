@@ -306,9 +306,23 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
         product = res.data
         if not product: raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
         
-        item_total = (product["selling_price"] or 0) * s_item.quantity
+        if s_item.is_pack:
+            # Usar pack_price si existe, sino calcular (selling_price * pack_size)
+            price = product.get("pack_price") or ((product.get("selling_price") or 0) * (product.get("pack_size") or 1))
+            deduct_qty = s_item.quantity * (product.get("pack_size") or 1)
+        else:
+            price = product.get("selling_price") or 0
+            deduct_qty = s_item.quantity
+            
+        item_total = price * s_item.quantity
         total_sale_amount += item_total
-        processed_items.append({"product": product, "quantity": s_item.quantity, "total": item_total})
+        processed_items.append({
+            "product": product, 
+            "quantity": s_item.quantity, 
+            "deduct_qty": deduct_qty, 
+            "total": item_total,
+            "is_pack": s_item.is_pack
+        })
 
     # Create Income Transaction
     tx_data = {
@@ -326,13 +340,13 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
         sale_data = {
             "stock_item_id": p["product"]["id"],
             "quantity": p["quantity"],
-            "description": batch.description,
+            "description": f"{batch.description} ({'PACK' if p.get('is_pack') else 'UNID'})",
             "sale_price_total": p["total"],
             "sale_tx_id": main_tx_id
         }
         supabase.table("sales").insert(sale_data).execute()
         
-        new_qty = p["product"]["quantity"] - p["quantity"]
+        new_qty = p["product"]["quantity"] - p.get("deduct_qty", p["quantity"])
         supabase.table("stock_items").update({
             "quantity": new_qty,
             "status": "DEPLETED" if new_qty <= 0 else "AVAILABLE"
