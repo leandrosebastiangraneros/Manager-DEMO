@@ -391,13 +391,42 @@ const Stock = () => {
                             </div>
 
                             {selectedExisting && (
-                                <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex flex-col gap-1 animate-fadeIn">
+                                <div className="bg-green-50 p-3 rounded-lg border border-green-100 flex flex-col gap-2 animate-fadeIn">
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.brand ? `${selectedExisting.brand} - ` : ''}{selectedExisting.name}</span>
                                         <button type="button" onClick={() => setSelectedExisting(null)} className="text-green-800"><span className="material-icons text-xs">close</span></button>
                                     </div>
-                                    {isPack && parseFloat(packSize) !== selectedExisting.pack_size && (
-                                        <div className="text-[9px] text-indigo-600 font-bold flex items-center gap-1">
+
+                                    {/* Botones de formato rápido */}
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsPack(false); setPackSize('1'); setNewItemPackPrice(''); }}
+                                            className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-all ${!isPack ? 'bg-green-600 text-white border-green-700' : 'bg-white text-green-700 border-green-200 hover:bg-green-100'}`}
+                                        >
+                                            UNIDAD
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsPack(true); setPackSize(selectedExisting.pack_size || '1'); setNewItemPackPrice(selectedExisting.pack_price || ''); }}
+                                            className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-all ${isPack && parseFloat(packSize) === selectedExisting.pack_size ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-100'}`}
+                                        >
+                                            PACK x{selectedExisting.pack_size}
+                                        </button>
+                                        {selectedExisting.formats?.map(f => (
+                                            <button
+                                                key={f.id}
+                                                type="button"
+                                                onClick={() => { setIsPack(true); setPackSize(f.pack_size); setNewItemPackPrice(f.pack_price); }}
+                                                className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-all ${isPack && parseFloat(packSize) === f.pack_size ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-100'}`}
+                                            >
+                                                {f.label || `PACK x${f.pack_size}`}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {isPack && selectedExisting.pack_size !== parseFloat(packSize) && !selectedExisting.formats?.some(f => f.pack_size === parseFloat(packSize)) && (
+                                        <div className="text-[9px] text-indigo-600 font-bold flex items-center gap-1 mt-1">
                                             <span className="material-icons text-[12px]">info</span>
                                             Se creará un nuevo formato de pack (x{packSize})
                                         </div>

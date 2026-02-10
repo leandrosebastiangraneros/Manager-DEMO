@@ -312,25 +312,37 @@ const Ventas = () => {
                                                                 </button>
 
                                                                 {/* Dropdown de Formatos */}
-                                                                {product.formats?.length > 0 && openPackDropdown === product.id && (
+                                                                {openPackDropdown === product.id && (
                                                                     <div className="absolute bottom-full left-0 w-full bg-surface border-2 border-indigo-500 rounded-xl shadow-2xl z-50 mb-1 animate-fadeIn overflow-hidden">
                                                                         <div className="bg-indigo-500 text-white text-[8px] font-bold py-1 px-2 uppercase text-center">Seleccionar Formato</div>
-                                                                        {/* Legacy Option if exists */}
-                                                                        {product.pack_size > 1 && (
+                                                                        {/* Legacy Option / Principal */}
+                                                                        {(product.pack_size > 1 || !product.formats?.length) && (
                                                                             <button
-                                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
+                                                                                onClick={() => {
+                                                                                    updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack');
+                                                                                    setOpenPackDropdown(null);
+                                                                                }}
                                                                                 className="w-full text-left px-3 py-2 hover:bg-surface-highlight text-[9px] border-b border-panel-border/5"
                                                                             >
-                                                                                Principal x{product.pack_size}
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="font-bold">Principal x{product.pack_size}</span>
+                                                                                    <span className="text-indigo-600 font-mono">{formatMoney(product.pack_price || (product.selling_price * (product.pack_size || 1)))}</span>
+                                                                                </div>
                                                                             </button>
                                                                         )}
-                                                                        {product.formats.map(fmt => (
+                                                                        {product.formats?.map(fmt => (
                                                                             <button
                                                                                 key={fmt.id}
-                                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
+                                                                                onClick={() => {
+                                                                                    updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id);
+                                                                                    setOpenPackDropdown(null);
+                                                                                }}
                                                                                 className="w-full text-left px-3 py-2 hover:bg-surface-highlight text-[9px] border-b border-panel-border/5 last:border-0"
                                                                             >
-                                                                                {fmt.label || `x${fmt.pack_size}`} - {formatMoney(fmt.pack_price)}
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="font-bold">{fmt.label || `PACK x${fmt.pack_size}`}</span>
+                                                                                    <span className="text-indigo-600 font-mono">{formatMoney(fmt.pack_price)}</span>
+                                                                                </div>
                                                                             </button>
                                                                         ))}
                                                                     </div>
