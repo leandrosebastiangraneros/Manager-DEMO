@@ -427,6 +427,7 @@ def generate_accounting_report(month: int, year: int, db: Session = Depends(get_
 
 # --- SYSTEM MANAGEMENT ---
 @app.get("/api/fix-db-schema")
+@app.get("/fix-db-schema")
 def fix_db_schema(db: Session = Depends(get_db)):
     try:
         # Add missing columns manually
