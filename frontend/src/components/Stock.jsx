@@ -88,9 +88,26 @@ const Stock = () => {
         const cost = parseFloat(newItemCost);
         const qty = parseFloat(newItemQuantity);
         const sellPrice = parseFloat(newItemSellingPrice);
+        const packP = newItemPackPrice ? parseFloat(newItemPackPrice) : null;
+        const pSize = parseFloat(packSize) || 1;
 
         if (!newItemName || isNaN(cost) || isNaN(qty) || isNaN(sellPrice)) {
             showAlert("Completa los datos del producto", "error");
+            return;
+        }
+
+        // Calculations for validation
+        const totalUnits = isPack ? qty * pSize : qty;
+        const unitCost = cost / totalUnits;
+        const packCost = unitCost * pSize;
+
+        if (sellPrice <= unitCost) {
+            showAlert(`El precio de venta ($${sellPrice}) debe ser mayor al costo ($${unitCost.toFixed(2)})`, "warning");
+            return;
+        }
+
+        if (packP && packP <= packCost) {
+            showAlert(`El precio de pack ($${packP}) debe ser mayor al costo del pack ($${packCost.toFixed(2)})`, "warning");
             return;
         }
 
@@ -164,14 +181,40 @@ const Stock = () => {
         const cost = parseFloat(newItemCost);
         const qty = parseFloat(newItemQuantity);
         const sellPrice = parseFloat(newItemSellingPrice);
+        const packP = newItemPackPrice ? parseFloat(newItemPackPrice) : null;
+        const pSize = parseFloat(packSize) || 1;
+
+        // Calculations for validation
+        const totalUnits = isPack ? qty * pSize : qty;
+        const unitCost = cost / totalUnits;
+        const packCost = unitCost * pSize;
+
+        if (sellPrice <= unitCost) {
+            showAlert(`El precio de venta unitario ($${sellPrice}) debe ser mayor al costo ($${unitCost.toFixed(2)})`, "warning");
+            return;
+        }
+
+        if (packP && packP <= packCost) {
+            showAlert(`El precio de pack ($${packP}) debe ser mayor al costo del pack ($${packCost.toFixed(2)})`, "warning");
+            return;
+        }
+
+        // Logic change: In Edit mode, newItemCost is treated as UNIT COST.
+        // We need to send cost_amount as (unit_cost * initial_quantity) to keep backend consistency
+        // OR we need to find what the initial_quantity was.
+        // For now, let's assume we want to maintain the original cost_amount if we didn't change cost?
+        // Actually, let's just use the unit cost as cost_amount if initial_quantity is 1.
+        // The most robust way is to use existing item's initial_quantity.
+        const existingItem = items.find(i => i.id === editingId);
+        const finalCostAmount = existingItem ? (cost * existingItem.initial_quantity) : cost;
 
         const payload = {
             name: newItemName,
             brand: newItemBrand,
             is_pack: isPack,
             pack_size: parseFloat(packSize),
-            cost_amount: cost,
-            initial_quantity: qty,
+            cost_amount: finalCostAmount,
+            initial_quantity: existingItem ? existingItem.initial_quantity : qty,
             selling_price: sellPrice,
             pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
             category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
@@ -398,6 +441,26 @@ const Stock = () => {
                                 </div>
                             </div>
 
+                            {/* Cost Comparison Helper */}
+                            {(parseFloat(newItemCost) > 0 && parseFloat(newItemQuantity) > 0) && (
+                                <div className="p-3 bg-void/5 rounded-xl border border-void/10 space-y-2 animate-fadeIn">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[9px] font-bold text-void uppercase">Costo Unitario:</span>
+                                        <span className="text-xs font-mono font-bold text-void">
+                                            {formatMoney(parseFloat(newItemCost) / (isPack ? (parseFloat(newItemQuantity) * parseFloat(packSize)) : parseFloat(newItemQuantity)))}
+                                        </span>
+                                    </div>
+                                    {isPack && (
+                                        <div className="flex justify-between items-center border-t border-void/5 pt-2">
+                                            <span className="text-[9px] font-bold text-void uppercase">Costo Pack:</span>
+                                            <span className="text-xs font-mono font-bold text-void">
+                                                {formatMoney((parseFloat(newItemCost) / parseFloat(newItemQuantity)))}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-sm bg-void text-white">
                                 AGREGAR A LA LISTA
                             </Button>
@@ -549,6 +612,15 @@ const Stock = () => {
                             <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
                         </div>
                     </div>
+
+                    {/* Cost Help for Edit */}
+                    {parseFloat(newItemCost) > 0 && (
+                        <div className="p-3 bg-void/5 rounded-xl border border-void/10 flex justify-between items-center text-[10px] font-bold animate-fadeIn">
+                            <span className="text-void uppercase tracking-tight">Costo del Pack (calc.): {formatMoney(parseFloat(newItemCost) * (parseFloat(packSize) || 1))}</span>
+                            <span className="text-void/40 uppercase tracking-tighter italic">Basado en Costo Unit.</span>
+                        </div>
+                    )}
+
                     <div className="pt-4 flex gap-3">
                         <Button variant="ghost" type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1">Cancelar</Button>
                         <Button variant="primary" type="submit" className="flex-1">Guardar Cambios</Button>
