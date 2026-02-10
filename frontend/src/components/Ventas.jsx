@@ -119,7 +119,7 @@ const Ventas = () => {
     const uncategorizedItems = filteredProducts.filter(p => !p.category_id);
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-[50vh] text-black animate-pulse">
+        <div className="flex flex-col items-center justify-center h-[50vh] text-txt-dim animate-pulse">
             <span className="material-icons text-4xl mb-4 animate-spin">sync</span>
             <div className="font-mono text-xs uppercase tracking-widest font-bold">Cargando Terminal...</div>
         </div>
@@ -187,12 +187,12 @@ const Ventas = () => {
                                                 className={`
                                                     text-left relative p-5 rounded-2xl transition-all duration-200 flex flex-col justify-between h-28
                                                     ${inCart
-                                                        ? 'bg-accent text-white shadow-xl scale-[1.02] ring-2 ring-offset-2 ring-accent'
+                                                        ? 'bg-accent text-void shadow-xl scale-[1.02] ring-2 ring-offset-2 ring-accent'
                                                         : 'bg-surface text-txt-primary hover:shadow-lg border border-gray-100/10 hover:border-gray-200'}
                                                 `}
                                             >
                                                 <div className="flex justify-between items-start w-full">
-                                                    <span className={`font-bold text-sm leading-snug pr-2 line-clamp-2 ${inCart ? 'text-white' : 'text-gray-900'}`}>
+                                                    <span className={`font-bold text-sm leading-snug pr-2 line-clamp-2 ${inCart ? 'text-void' : 'text-txt-primary'}`}>
                                                         {product.name}
                                                     </span>
                                                     {inCart && (
@@ -204,11 +204,11 @@ const Ventas = () => {
 
                                                 <div className="flex justify-between items-end w-full mt-2">
                                                     <div className="flex flex-col">
-                                                        <span className={`text-[10px] font-medium uppercase tracking-wide ${inCart ? 'text-white/60' : 'text-gray-400'}`}>
+                                                        <span className={`text-[10px] font-medium uppercase tracking-wide ${inCart ? 'text-void/60' : 'text-txt-dim'}`}>
                                                             Stock: {product.quantity}
                                                         </span>
                                                     </div>
-                                                    <span className={`font-mono font-bold text-sm ${inCart ? 'text-green-400' : 'text-txt-primary'}`}>
+                                                    <span className={`font-mono font-bold text-sm ${inCart ? 'text-void' : 'text-txt-primary'}`}>
                                                         {formatMoney(product.selling_price)}
                                                     </span>
                                                 </div>

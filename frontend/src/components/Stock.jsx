@@ -228,7 +228,7 @@ const Stock = () => {
                                                     <div className="text-[10px] text-gray-400 font-mono">ID: {item.id.toString().padStart(4, '0')}</div>
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${item.quantity > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${item.quantity > 0 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                                                         {item.quantity}
                                                         <span className="text-[9px] text-gray-400 ml-1 font-normal">/ {item.initial_quantity}</span>
                                                     </div>
