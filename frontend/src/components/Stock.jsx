@@ -32,24 +32,42 @@ const Stock = () => {
     const [workDesc, setWorkDesc] = useState('');
 
     const fetchStock = () => {
-        setLoading(true);
+        // Optimistic Load
+        const cached = localStorage.getItem('stock_items');
+        if (cached && loading) {
+            setItems(JSON.parse(cached));
+            setLoading(false);
+        }
+
         fetch(`${API_URL}/stock`)
             .then(res => res.json())
             .then(data => {
-                setItems(Array.isArray(data) ? data : []);
+                const safeData = Array.isArray(data) ? data : [];
+                setItems(safeData);
+                localStorage.setItem('stock_items', JSON.stringify(safeData));
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Error stock:", err);
-                setItems([]);
+                if (!cached) setItems([]);
                 setLoading(false);
             });
     };
 
     const fetchCategories = () => {
+        // Optimistic Load
+        const cached = localStorage.getItem('stock_categories');
+        if (cached) {
+            setCategories(JSON.parse(cached));
+        }
+
         fetch(`${API_URL}/categories`)
             .then(res => res.json())
-            .then(data => setCategories(Array.isArray(data) ? data : []))
+            .then(data => {
+                const safeData = Array.isArray(data) ? data : [];
+                setCategories(safeData);
+                localStorage.setItem('stock_categories', JSON.stringify(safeData));
+            })
             .catch(err => console.error("Error cats:", err));
     };
 

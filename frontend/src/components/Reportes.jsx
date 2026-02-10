@@ -24,14 +24,28 @@ const Reportes = () => {
     }, [date]);
 
     const loadData = async () => {
-        setLoading(true);
+        // Optimistic Load
+        const cacheKey = `report_summary_${date.getMonth()}_${date.getFullYear()}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        if (cached && loading) {
+            setSummary(JSON.parse(cached));
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
+
         const month = date.getMonth() + 1;
         const year = date.getFullYear();
 
         try {
             // 1. Summary (Now returns total_income, total_expense, net_balance)
             const sumRes = await fetch(`${API_URL}/finances/summary?month=${month}&year=${year}`);
-            if (sumRes.ok) setSummary(await sumRes.json());
+            if (sumRes.ok) {
+                const data = await sumRes.json();
+                setSummary(data);
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+            }
 
             // 2. Expenses (Documents)
             const expRes = await fetch(`${API_URL}/expenses?month=${month}&year=${year}`);

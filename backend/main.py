@@ -486,3 +486,34 @@ def reset_database(db: Session = Depends(get_db)):
         return {"message": "Database reset successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/seed-categories")
+def seed_categories(db: Session = Depends(get_db)):
+    try:
+        # Default categories for Beverage Distributor
+        categories = [
+            {"name": "Gaseosas", "type": "PRODUCT"},
+            {"name": "Cervezas", "type": "PRODUCT"},
+            {"name": "Vinos y Espumantes", "type": "PRODUCT"},
+            {"name": "Aguas y Jugos", "type": "PRODUCT"},
+            {"name": "Destilados", "type": "PRODUCT"},
+            {"name": "Comida / Snacks", "type": "PRODUCT"},
+            {"name": "Venta de Bebidas", "type": "INCOME"},
+            {"name": "Compra de Mercadería", "type": "EXPENSE"},
+            {"name": "Gastos Fijos", "type": "EXPENSE"},
+            {"name": "Otros Ingresos", "type": "INCOME"}
+        ]
+        
+        added = []
+        for cat_data in categories:
+            exists = db.query(models.Category).filter(models.Category.name == cat_data["name"]).first()
+            if not exists:
+                new_cat = models.Category(**cat_data)
+                db.add(new_cat)
+                added.append(cat_data["name"])
+        
+        db.commit()
+        return {"status": "success", "added_categories": added, "message": f"Added {len(added)} categories"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}

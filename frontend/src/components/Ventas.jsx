@@ -22,20 +22,37 @@ const Ventas = () => {
     }, []);
 
     const fetchData = async () => {
-        setLoading(true);
+        // Optimistic Load
+        const cachedProds = localStorage.getItem('ventas_products');
+        const cachedCats = localStorage.getItem('ventas_categories');
+
+        if (cachedProds && cachedCats) {
+            setProducts(JSON.parse(cachedProds));
+            setCategories(JSON.parse(cachedCats));
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
+
         try {
             const [prodRes, catRes] = await Promise.all([
                 fetch(`${API_URL}/stock`),
                 fetch(`${API_URL}/categories`)
             ]);
-            const prods = await prodRes.json();
-            const cats = await catRes.json();
+            const prodsData = await prodRes.json();
+            const catsData = await catRes.json();
 
-            setProducts(prods.filter(p => p.status === 'AVAILABLE'));
-            setCategories(cats);
+            const availableProds = Array.isArray(prodsData) ? prodsData.filter(p => p.status === 'AVAILABLE') : [];
+            const safeCats = Array.isArray(catsData) ? catsData : [];
+
+            setProducts(availableProds);
+            setCategories(safeCats);
+
+            localStorage.setItem('ventas_products', JSON.stringify(availableProds));
+            localStorage.setItem('ventas_categories', JSON.stringify(safeCats));
         } catch (err) {
             console.error(err);
-            toast.error("Error al cargar datos.");
+            if (!cachedProds) toast.error("Error al cargar datos.");
         } finally {
             setLoading(false);
         }
