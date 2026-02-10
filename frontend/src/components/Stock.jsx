@@ -3,7 +3,6 @@ import { useDialog } from '../context/DialogContext';
 import { API_URL } from '../config';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
-// import StatusBadge from './common/StatusBadge'; // Not used in this layout
 import Modal from './common/Modal';
 
 const Stock = () => {
@@ -16,7 +15,7 @@ const Stock = () => {
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
-    // Form State for Add/Edit
+    // Form State for Add/Edit & Replenishment
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [newItemName, setNewItemName] = useState('');
@@ -138,13 +137,13 @@ const Stock = () => {
 
     const addToDraft = (e) => {
         e.preventDefault();
-        const cost = parseFloat(newItemCost);
-        const qty = parseFloat(newItemQuantity);
+        const costAmount = parseFloat(newItemCost);
+        const qtyToEnter = parseFloat(newItemQuantity);
         const sellPrice = parseFloat(newItemSellingPrice) || 0;
         const packP = newItemPackPrice ? parseFloat(newItemPackPrice) : null;
         const pSize = parseFloat(packSize) || 1;
 
-        if (!newItemName || isNaN(cost) || isNaN(qty)) {
+        if (!newItemName || isNaN(costAmount) || isNaN(qtyToEnter)) {
             showAlert("Completa los datos mínimos (Nombre, Costo, Cantidad)", "error");
             return;
         }
@@ -155,8 +154,8 @@ const Stock = () => {
             brand: newItemBrand,
             is_pack: isPack,
             pack_size: pSize,
-            cost_amount: cost,
-            quantity: qty,
+            cost_amount: costAmount, // Total batch cost
+            quantity: qtyToEnter,   // Total units/packs to sum
             selling_price: sellPrice,
             pack_price: packP,
             category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null,
@@ -172,6 +171,9 @@ const Stock = () => {
         setNewItemQuantity('1');
         setNewItemSellingPrice('');
         setNewItemPackPrice('');
+        setNewItemCategoryId('');
+        setIsPack(false);
+        setPackSize('1');
         setSelectedExisting(null);
         setNewItemFormats([]);
     };
@@ -280,9 +282,10 @@ const Stock = () => {
         setNewItemName(item.name);
         setNewItemBrand(item.brand || '');
         setNewItemSellingPrice(item.selling_price || '');
+        setNewItemPackPrice(item.pack_price || '');
         setNewItemCategoryId(item.category_id || '');
-        setIsPack(false);
-        setPackSize('1');
+        setIsPack(item.is_pack || false);
+        setPackSize(item.pack_size || '1');
         setSearchTerm('');
     };
 
@@ -304,21 +307,20 @@ const Stock = () => {
 
     return (
         <div className="h-full flex flex-col pb-20 overflow-hidden">
-            {/* Header section stays simple */}
             <header className="mb-6 flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1 uppercase">
                             Gestión de <span className="text-txt-primary/50">Inventario</span>
                         </h1>
-                        <p className="text-txt-secondary text-xs font-medium">Carga mercadería y administra tu stock.</p>
+                        <p className="text-txt-secondary text-xs font-medium">Panel de control integral de stock.</p>
                     </div>
 
                     <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface flex-1 md:w-80 border border-panel-border/5">
                         <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-txt-primary transition-colors text-lg">search</span>
                         <input
                             type="text"
-                            placeholder="Filtrar inventario..."
+                            placeholder="Buscar en el listado..."
                             className="w-full bg-transparent border-none pl-11 pr-4 py-3 text-txt-primary font-medium text-sm rounded-xl outline-none placeholder:text-txt-dim"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -326,7 +328,6 @@ const Stock = () => {
                     </div>
                 </div>
 
-                {/* Stats cards for consistency */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                     <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-accent/20 transition-all">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -358,27 +359,28 @@ const Stock = () => {
                 </div>
             </header>
 
-            {/* Split Main View */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {/* Section 1: Replenishment Panel (Sticky/Constant) */}
-                <div className="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
+                {/* SECTION 1: FULL REPLENISHMENT FORM (LEFT PANEL) */}
+                <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
                     <GlassContainer className="p-5 border-panel-border/5 flex flex-col h-full bg-surface shadow-lg">
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="material-icons text-accent text-lg">add_box</span>
-                            <h2 className="text-xs font-black uppercase tracking-widest text-txt-primary">Entrada de Mercadería</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="material-icons text-accent text-lg">add_box</span>
+                                <h2 className="text-xs font-black uppercase tracking-widest text-txt-primary">Entrada de Mercadería</h2>
+                            </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-5 pr-1">
-                            {/* Search for Existing to Populate Form */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-5 pr-1 pb-4">
+                            {/* 1. Search existing (Restored functionality) */}
                             <div className="relative">
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Producto Existente</label>
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">¿Producto ya existente?</label>
                                 <div className="relative">
                                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">inventory</span>
                                     <input
                                         type="text"
                                         placeholder="Buscar para reponer..."
-                                        className="w-full pl-9 pr-4 py-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none focus:border-accent"
+                                        className="w-full pl-9 pr-4 py-2.5 bg-surface-highlight border border-panel-border/10 rounded-xl text-xs outline-none focus:border-accent"
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
                                     />
@@ -392,7 +394,7 @@ const Stock = () => {
                                                     className="w-full text-left px-3 py-2.5 hover:bg-surface-highlight text-xs border-b border-panel-border/5 last:border-0"
                                                 >
                                                     <div className="font-bold truncate">{i.name}</div>
-                                                    <div className="text-[9px] text-gray-400">Stock actual: {i.quantity}</div>
+                                                    <div className="text-[9px] text-gray-400">Stock: {i.quantity} | {i.brand}</div>
                                                 </button>
                                             ))}
                                         </div>
@@ -401,42 +403,108 @@ const Stock = () => {
                             </div>
 
                             {selectedExisting && (
-                                <div className="p-2.5 bg-accent/5 border border-accent/10 rounded-xl relative animate-fadeIn flex justify-between items-center">
+                                <div className="p-3 bg-accent/5 border border-accent/20 rounded-xl relative animate-fadeIn flex justify-between items-center">
                                     <div className="truncate">
                                         <div className="text-[8px] font-black text-accent uppercase tracking-tighter">Seleccionado para reposición</div>
                                         <div className="text-xs font-bold truncate">{selectedExisting.name}</div>
                                     </div>
-                                    <button onClick={() => setSelectedExisting(null)} className="text-accent hover:text-void transition-colors"><span className="material-icons text-sm">close</span></button>
+                                    <button onClick={() => setSelectedExisting(null)} className="p-1 hover:bg-accent/10 rounded transition-colors"><span className="material-icons text-sm text-accent">close</span></button>
                                 </div>
                             )}
 
-                            {/* Form */}
+                            {/* 2. Main Entry Form (Restored Categories, Packs, Selling Prices) */}
                             <form onSubmit={addToDraft} className="space-y-4">
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Marca</label>
-                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none disabled:opacity-50" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} disabled={!!selectedExisting} />
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nombre</label>
+                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none focus:border-accent disabled:opacity-50" value={newItemName} onChange={e => setNewItemName(e.target.value)} required disabled={!!selectedExisting} />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nombre</label>
-                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none disabled:opacity-50" value={newItemName} onChange={e => setNewItemName(e.target.value)} required disabled={!!selectedExisting} />
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Marca</label>
+                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none focus:border-accent disabled:opacity-50" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} disabled={!!selectedExisting} />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Cantidad</label>
-                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono" value={newItemQuantity} onChange={e => setNewItemQuantity(e.target.value)} required />
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Categoría</label>
+                                            <select className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none focus:border-accent disabled:opacity-50" value={newItemCategoryId} onChange={e => setNewItemCategoryId(e.target.value)} disabled={!!selectedExisting}>
+                                                <option value="">Sin Categoría</option>
+                                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-end gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsPack(!isPack)}
+                                                className={`flex-1 p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${isPack ? 'bg-void text-white border-void' : 'bg-surface-highlight text-gray-400 border-panel-border/5'}`}
+                                            >
+                                                {isPack ? 'MODO PACK ON' : 'Packs?'}
+                                            </button>
+                                            {isPack && (
+                                                <input type="number" placeholder="x?" className="w-12 p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono" value={packSize} onChange={e => setPackSize(e.target.value)} />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Carga ({isPack ? 'Packs' : 'Unid'})</label>
+                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono focus:border-accent" value={newItemQuantity} onChange={e => setNewItemQuantity(e.target.value)} required />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Costo Total</label>
-                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono" placeholder="0.00" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Costo Total Lote</label>
+                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono focus:border-accent" placeholder="0.00" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
                                         </div>
+                                    </div>
+
+                                    {/* Selling Prices (Restored) */}
+                                    <div className="grid grid-cols-2 gap-3 pt-2 bg-accent/5 p-3 rounded-2xl border border-accent/10">
+                                        <div>
+                                            <label className="text-[8px] font-black text-accent uppercase tracking-widest block mb-1">Venta Unit.</label>
+                                            <input type="number" className="w-full p-2 bg-surface text-green-600 border border-panel-border/10 rounded-lg text-xs outline-none font-mono font-bold" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
+                                        </div>
+                                        <div>
+                                            <label className="text-[8px] font-black text-accent uppercase tracking-widest block mb-1">Venta Pack</label>
+                                            <input type="number" className="w-full p-2 bg-surface text-green-600 border border-panel-border/10 rounded-lg text-xs outline-none font-mono" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} placeholder="Opcional" />
+                                        </div>
+                                    </div>
+
+                                    {/* Multi-Format Section (Restored functionality) */}
+                                    <div className="pt-2 border-t border-panel-border/5">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Otros Formatos</h4>
+                                            <span className="text-[8px] px-1.5 py-0.5 bg-surface-highlight rounded-full border border-panel-border/5">{newItemFormats.length}</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-12 gap-1.5 mb-3">
+                                            <input className="col-span-3 p-2 bg-surface-highlight text-[9px] rounded-lg outline-none border border-panel-border/5" placeholder="Cant." value={formatPackSize} onChange={e => setFormatPackSize(e.target.value)} type="number" />
+                                            <input className="col-span-4 p-2 bg-surface-highlight text-[9px] rounded-lg outline-none border border-panel-border/5" placeholder="Precio" value={formatPackPrice} onChange={e => setFormatPackPrice(e.target.value)} type="number" />
+                                            <input className="col-span-3 p-2 bg-surface-highlight text-[9px] rounded-lg outline-none border border-panel-border/5" placeholder="Nombre" value={formatLabel} onChange={e => setFormatLabel(e.target.value)} />
+                                            <button type="button" onClick={addFormatToItem} className="col-span-2 bg-accent text-void rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"><span className="material-icons text-xs">add</span></button>
+                                        </div>
+
+                                        {newItemFormats.length > 0 && (
+                                            <div className="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-1">
+                                                {newItemFormats.map((f, i) => (
+                                                    <div key={i} className="flex justify-between items-center p-2 bg-surface-highlight/50 rounded-lg border border-panel-border/5 group">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[9px] font-black text-void underline">x{f.pack_size}</span>
+                                                            <div className="text-[9px] font-bold line-clamp-1">{f.label}</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[9px] font-mono font-bold text-green-600">{formatMoney(f.pack_price)}</span>
+                                                            <button type="button" onClick={() => deleteFormat(null, i)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><span className="material-icons text-xs">close</span></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                <button type="submit" className="w-full py-3 bg-void text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-accent hover:text-void transition-all shadow-md">
+                                <button type="submit" className="w-full py-4 bg-void text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-accent hover:text-void transition-all shadow-lg active:scale-95">
                                     Agregar al Draft
                                 </button>
                             </form>
@@ -444,21 +512,23 @@ const Stock = () => {
                             {/* Draft List Summary */}
                             {draftItems.length > 0 && (
                                 <div className="pt-4 border-t border-panel-border/5 space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="text-[9px] font-black uppercase text-txt-dim">Draft ({draftItems.length})</h3>
-                                        <button onClick={handleSaveBatch} disabled={isSavingBatch} className="text-accent text-[9px] font-black uppercase hover:underline">
-                                            {isSavingBatch ? 'Procesando...' : 'Confirmar Todo'}
+                                    <div className="flex justify-between items-center bg-void/5 p-2 rounded-xl border border-void/10">
+                                        <h3 className="text-[9px] font-black uppercase text-void">PROCESAR LOTE ({draftItems.length})</h3>
+                                        <button onClick={handleSaveBatch} disabled={isSavingBatch} className="bg-void text-white text-[9px] font-black px-3 py-1.5 rounded-lg uppercase hover:bg-accent hover:text-void transition-all shadow-sm">
+                                            {isSavingBatch ? 'Guardando...' : 'Confirmar Todo'}
                                         </button>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="grid grid-cols-1 gap-2">
                                         {draftItems.map((item, idx) => (
-                                            <div key={idx} className="bg-surface-highlight/50 p-2 rounded-lg text-[10px] flex justify-between items-center group relative">
-                                                <div className="truncate pr-4 flex flex-col">
-                                                    <span className="font-bold truncate text-txt-primary">{item.name}</span>
-                                                    <span className="text-[8px] opacity-50 font-mono">x{item.quantity} | {formatMoney(item.cost_amount)}</span>
+                                            <div key={idx} className="bg-surface p-2.5 rounded-xl border border-panel-border/5 text-[10px] flex justify-between items-center group relative shadow-sm hover:border-accent/30 transition-all">
+                                                <div className="truncate pr-8 flex flex-col">
+                                                    <span className="font-black truncate text-txt-primary">{item.name}</span>
+                                                    <span className="text-[8px] text-txt-dim uppercase font-bold">
+                                                        {item.item_id ? 'Reposición' : 'Nuevo'} • {item.quantity} {item.is_pack ? 'Packs' : 'Unid'} • {formatMoney(item.cost_amount)}
+                                                    </span>
                                                 </div>
-                                                <button onClick={() => setDraftItems(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all absolute right-2">
-                                                    <span className="material-icons text-xs">close</span>
+                                                <button onClick={() => setDraftItems(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 transition-all absolute right-2">
+                                                    <span className="material-icons text-base">cancel</span>
                                                 </button>
                                             </div>
                                         ))}
@@ -469,13 +539,12 @@ const Stock = () => {
                     </GlassContainer>
                 </div>
 
-                {/* Section 2: Full Inventory Table */}
-                <div className="lg:col-span-3 overflow-hidden flex flex-col bg-surface rounded-2xl border border-panel-border/5 shadow-sm">
+                {/* SECTION 2: FULL INVENTORY TABLE (RIGHT PANEL) */}
+                <div className="lg:col-span-8 overflow-hidden flex flex-col bg-surface rounded-2xl border border-panel-border/5 shadow-sm">
                     <div className="overflow-auto custom-scrollbar flex-1">
-                        {/* Desktop Table */}
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
-                                <tr className="bg-gray-50/50 text-txt-dim text-[10px] uppercase font-bold tracking-widest border-b border-panel-border/5 sticky top-0 bg-surface z-10">
+                                <tr className="bg-gray-50/50 text-txt-dim text-[10px] uppercase font-bold tracking-widest border-b border-panel-border/5 sticky top-0 bg-surface z-20">
                                     <th className="p-4 pl-8">Producto</th>
                                     <th className="p-4 text-center">Stock</th>
                                     <th className="p-4 text-right">Costo Unit.</th>
@@ -492,11 +561,16 @@ const Stock = () => {
                                             <td className="p-4 pl-8">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
-                                                        <span className="material-icons text-lg">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
+                                                        <span className="material-icons text-lg">{item.is_pack ? 'inventory_2' : 'shopping_basket'}</span>
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-bold text-txt-primary line-clamp-1">{item.name}</span>
-                                                        <span className="text-[9px] text-txt-dim uppercase font-medium">{item.brand || 'Genérico'}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[9px] text-txt-dim uppercase font-medium">{item.brand || 'Genérico'}</span>
+                                                            {item.category_name && (
+                                                                <span className="text-[7px] bg-void/5 px-1 rounded uppercase font-bold text-void/50">{item.category_name}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -508,21 +582,24 @@ const Stock = () => {
                                             <td className="p-4 text-right font-mono text-xs text-txt-dim">{formatMoney(item.unit_cost)}</td>
                                             <td className="p-4 text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <span className="text-xs font-mono font-bold text-txt-primary">{formatMoney(item.selling_price)}</span>
-                                                    <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Venta</span>
+                                                    <span className="text-xs font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</span>
+                                                    {item.pack_price && (
+                                                        <span className="text-[7px] text-accent font-bold uppercase tracking-tighter">Pack: {formatMoney(item.pack_price)}</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-sm flex items-center justify-center w-fit mx-auto gap-1 ${isLowStock ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                                    {isLowStock ? 'Crítico' : 'Disponible'}
+                                                    <span className="w-1 h-1 rounded-full bg-current"></span>
+                                                    {isLowStock ? 'Bajo' : 'OK'}
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right pr-8">
                                                 <div className="flex gap-1 justify-end">
-                                                    <button onClick={() => openEditModal(item)} className="p-2 text-gray-400 hover:text-accent transition-colors">
+                                                    <button onClick={() => openEditModal(item)} className="p-2 text-gray-400 hover:text-accent transition-colors" title="Editar">
                                                         <span className="material-icons text-base">edit</span>
                                                     </button>
-                                                    <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                                    <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar">
                                                         <span className="material-icons text-base">delete</span>
                                                     </button>
                                                 </div>
@@ -533,7 +610,7 @@ const Stock = () => {
                             </tbody>
                         </table>
 
-                        {/* Mobile Cards Fallback */}
+                        {/* Mobile List View fallback */}
                         <div className="md:hidden divide-y divide-panel-border/5">
                             {filteredItems.map(item => {
                                 const isLowStock = item.quantity <= (item.min_stock_alert || 5);
@@ -542,7 +619,7 @@ const Stock = () => {
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
-                                                    <span className="material-icons text-base">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
+                                                    <span className="material-icons text-base">{item.is_pack ? 'inventory_2' : 'shopping_basket'}</span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold text-txt-primary">{item.name}</span>
@@ -553,14 +630,14 @@ const Stock = () => {
                                                 {isLowStock ? 'Bajo' : 'OK'}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-end">
+                                        <div className="flex justify-between items-end border-t border-panel-border/5 pt-2 mt-1">
                                             <div>
-                                                <span className="text-[8px] text-gray-400 uppercase font-black">Stock</span>
-                                                <div className={`text-xs font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
+                                                <span className="text-[8px] text-gray-400 uppercase font-black">Stock / Venta</span>
+                                                <div className="text-xs font-mono font-black">{item.quantity} | {formatMoney(item.selling_price)}</div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => openEditModal(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">edit</span></button>
-                                                <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">delete</span></button>
+                                                <button onClick={() => openEditModal(item)} className="p-2 text-gray-400"><span className="material-icons text-base">edit</span></button>
+                                                <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400"><span className="material-icons text-base">delete</span></button>
                                             </div>
                                         </div>
                                     </div>
@@ -571,102 +648,113 @@ const Stock = () => {
                 </div>
             </div>
 
-            {/* Modals for Editing and Selling (Still needed as separate flows) */}
+            {/* EDIT MODAL (KEEPING FULL FUNCTIONALITY) */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-xl p-8">
-                <h2 className="text-xl font-black uppercase tracking-tight mb-8">Editar Producto</h2>
-                <form onSubmit={handleEditSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar pr-2">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Marca</label>
-                            <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-medium" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nombre</label>
-                            <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-medium" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
-                        </div>
+                <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-xl font-black uppercase tracking-tight">Editar Producto</h2>
+                        <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-void"><span className="material-icons">close</span></button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Costo Unit.</label>
-                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
+                    <form onSubmit={handleEditSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar pr-1">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nombre</label>
+                                <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-medium focus:border-accent" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Marca</label>
+                                <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-medium focus:border-accent" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
+                            </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Venta Unid.</label>
-                            <input type="number" className="w-full p-3 bg-accent/5 border border-accent/20 text-accent rounded-xl outline-none font-mono font-bold" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Venta Pack</label>
-                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Stock Alert</label>
-                            <input type="number" className="w-full p-3 bg-orange-50/50 border border-orange-200/20 text-orange-600 rounded-xl outline-none font-mono" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} />
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Costo Unit.</label>
+                                <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Venta Unid.</label>
+                                <input type="number" className="w-full p-3 bg-accent/5 border border-accent/20 text-accent rounded-xl outline-none font-mono font-bold" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Venta Pack</label>
+                                <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
+                            </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoría</label>
-                            <select className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none" value={newItemCategoryId} onChange={e => setNewItemCategoryId(e.target.value)}>
-                                <option value="">Sin Categoría</option>
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
-                    </div>
 
-                    <div className="pt-4 border-t border-panel-border/5">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Otros Formatos</h4>
-                        <div className="space-y-3 mb-6">
-                            {newItemFormats.map((f, i) => (
-                                <div key={i} className="flex justify-between items-center p-3 bg-surface-highlight rounded-xl border border-panel-border/5">
-                                    <div className="flex items-center gap-3">
-                                        <span className="w-8 h-8 rounded-lg bg-void text-white flex items-center justify-center text-[10px] font-black">X{f.pack_size}</span>
-                                        <div className="text-xs font-bold">{f.label}</div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alerta Stock</label>
+                                <input type="number" className="w-full p-3 bg-orange-50/50 border border-orange-200/20 text-orange-600 rounded-xl outline-none font-mono" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoría</label>
+                                <select className="w-full p-3 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none" value={newItemCategoryId} onChange={e => setNewItemCategoryId(e.target.value)}>
+                                    <option value="">Sin Categoría</option>
+                                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-panel-border/5">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gestión de Formatos</h4>
+                            </div>
+
+                            <div className="space-y-3 mb-6">
+                                {newItemFormats.map((f, i) => (
+                                    <div key={i} className="flex justify-between items-center p-3 bg-surface-highlight rounded-xl border border-panel-border/5 border-l-4 border-l-accent">
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-8 h-8 rounded-lg bg-void text-white flex items-center justify-center text-[10px] font-black tracking-tighter">X{f.pack_size}</span>
+                                            <div className="text-xs font-bold">{f.label}</div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xs font-mono font-black text-accent">{formatMoney(f.pack_price)}</span>
+                                            <button type="button" onClick={() => deleteFormat(f.id, i)} className="text-gray-300 hover:text-red-500 transition-colors"><span className="material-icons text-sm">delete</span></button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-xs font-mono font-black text-accent">{formatMoney(f.pack_price)}</span>
-                                        <button type="button" onClick={() => deleteFormat(f.id, i)} className="text-gray-300 hover:text-red-500"><span className="material-icons text-sm">delete</span></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-12 gap-2 bg-surface-highlight/30 p-3 rounded-2xl border border-panel-border/5">
-                            <input className="col-span-3 p-2 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Cant." value={formatPackSize} onChange={e => setFormatPackSize(e.target.value)} type="number" />
-                            <input className="col-span-4 p-2 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Precio" value={formatPackPrice} onChange={e => setFormatPackPrice(e.target.value)} type="number" />
-                            <input className="col-span-3 p-2 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Nombre" value={formatLabel} onChange={e => setFormatLabel(e.target.value)} />
-                            <button type="button" onClick={addFormatToItem} className="col-span-2 bg-void text-white rounded-lg flex items-center justify-center hover:bg-accent transition-colors"><span className="material-icons text-sm">add</span></button>
-                        </div>
-                    </div>
+                                ))}
+                            </div>
 
-                    <div className="pt-8 flex gap-3">
-                        <Button variant="ghost" className="flex-1" type="button" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
-                        <Button variant="primary" className="flex-1 bg-void text-white" type="submit">Guardar Cambios</Button>
-                    </div>
-                </form>
+                            <div className="grid grid-cols-12 gap-2 bg-surface-highlight/30 p-3 rounded-2xl border border-panel-border/10">
+                                <input className="col-span-3 p-2.5 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Cant." value={formatPackSize} onChange={e => setFormatPackSize(e.target.value)} type="number" />
+                                <input className="col-span-4 p-2.5 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Precio" value={formatPackPrice} onChange={e => setFormatPackPrice(e.target.value)} type="number" />
+                                <input className="col-span-3 p-2.5 bg-surface text-[10px] rounded-lg outline-none border border-panel-border/5" placeholder="Nombre" value={formatLabel} onChange={e => setFormatLabel(e.target.value)} />
+                                <button type="button" onClick={addFormatToItem} className="col-span-2 bg-void text-white rounded-lg flex items-center justify-center hover:bg-accent transition-colors shadow-sm"><span className="material-icons text-sm">add</span></button>
+                            </div>
+                        </div>
+
+                        <div className="pt-8 flex gap-3">
+                            <Button variant="ghost" className="flex-1 py-4" type="button" onClick={() => setIsAddModalOpen(false)}>Descartar</Button>
+                            <Button variant="primary" className="flex-1 bg-void text-white py-4 shadow-xl" type="submit">Guardar Cambios</Button>
+                        </div>
+                    </form>
+                </div>
             </Modal>
 
+            {/* QUICK SELL MODAL (OPTIONAL FLOW) */}
             <Modal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} className="max-w-md p-8">
-                <h2 className="text-xl font-black uppercase tracking-tight mb-2">Registrar Venta</h2>
-                <p className="text-xs text-txt-dim mb-8">{selectedItem?.name}</p>
+                <h2 className="text-xl font-black uppercase tracking-tight mb-2 text-void">Efectuar Venta Directa</h2>
+                <p className="text-xs text-txt-dim mb-8">{selectedItem?.name} | {selectedItem?.brand}</p>
                 <form onSubmit={handleSellSubmit} className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cantidad</label>
-                            <input type="number" className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono text-center" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
+                            <input type="number" className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono text-center text-lg" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Precio Unit.</label>
-                            <input type="number" className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono text-center text-green-600 font-bold" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
+                            <input type="number" className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none font-mono text-center text-green-600 font-black text-lg" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
                         </div>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nota / Descripción</label>
-                        <textarea className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none h-24 text-sm" value={workDesc} onChange={e => setWorkDesc(e.target.value)} required placeholder="ej. Venta salón" />
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nota Administrativa</label>
+                        <textarea className="w-full p-4 bg-surface-highlight border border-panel-border/5 rounded-xl outline-none h-24 text-sm resize-none" value={workDesc} onChange={e => setWorkDesc(e.target.value)} required placeholder="ej. Venta rápida mostrador" />
                     </div>
                     <div className="pt-4 flex gap-3">
-                        <Button variant="ghost" className="flex-1" type="button" onClick={() => setIsSellModalOpen(false)}>Cancelar</Button>
-                        <Button variant="primary" className="flex-1 bg-accent text-void" type="submit">Confirmar Venta</Button>
+                        <Button variant="ghost" className="flex-1 py-4" type="button" onClick={() => setIsSellModalOpen(false)}>Cancelar</Button>
+                        <Button variant="primary" className="flex-1 bg-accent text-void py-4 font-black shadow-lg" type="submit">Confirmar Operación</Button>
                     </div>
                 </form>
             </Modal>
