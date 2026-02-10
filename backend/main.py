@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Request
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
@@ -33,8 +33,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Global Exception Handler (Diagnostic Tool)
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = str(exc)
+    stack = traceback.format_exc()
+    logger.error(f"Global Error: {error_msg}\n{stack}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": error_msg,
+            "type": type(exc).__name__,
+            "msg": "Ocurrió un error en el servidor. Revisa los detalles.",
+            "traceback": stack if app.debug else None
+        }
+    )
+
 # Upload directory
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "/tmp/uploads" if os.getenv("VERCEL") else "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -46,12 +62,11 @@ def ping():
 
 @app.get("/health")
 def health_check():
-    if not supabase:
-        return {"status": "ERROR", "db_connection": "NOT_CONFIGURED", "detail": "Supabase client not initialized"}
+    if not supabase or not supabase.initialized:
+        return {"status": "ERROR", "db_connection": "NOT_CONFIGURED", "detail": "Supabase credentials missing"}
     try:
-        # Simple query to check connection
         supabase.table("categories").select("id").limit(1).execute()
-        return {"status": "ONLINE", "db_connection": "SUCCESS", "mode": "Supabase Client (HTTPX)"}
+        return {"status": "ONLINE", "db_connection": "SUCCESS", "mode": "Supabase Client (HTTPX Lite)"}
     except Exception as e:
         return {"status": "ERROR", "db_connection": "FAILED", "detail": str(e)}
 
@@ -60,8 +75,6 @@ def health_check():
 def create_category(category: schemas.CategoryCreate):
     data = category.model_dump()
     res = supabase.table("categories").insert(data).execute()
-    if not res.data:
-        raise HTTPException(status_code=400, detail="Failed to create category")
     return res.data[0]
 
 @app.get("/categories", response_model=List[schemas.Category])
@@ -69,9 +82,8 @@ def read_categories(type: Optional[str] = None):
     query = supabase.table("categories").select("*")
     if type:
         query = query.eq("type", type)
-    
     res = query.execute()
-    return res.data
+    return res.data or []
 
 # --- TRANSACTIONS ---
 @app.post("/transactions", response_model=schemas.Transaction)
@@ -79,36 +91,30 @@ def create_transaction(transaction: schemas.TransactionCreate):
     data = transaction.model_dump()
     data["date"] = datetime.now().isoformat()
     res = supabase.table("transactions").insert(data).execute()
-    if not res.data:
-        raise HTTPException(status_code=400, detail="Failed to create transaction")
     return res.data[0]
 
 @app.get("/transactions", response_model=List[schemas.Transaction])
 def read_transactions(skip: int = 0, limit: int = 100):
     res = supabase.table("transactions").select("*").order("date", desc=True).range(skip, skip + limit - 1).execute()
-    return res.data
+    return res.data or []
 
 @app.get("/dashboard-stats")
 def get_dashboard_stats():
     now = datetime.now()
     first_day = datetime(now.year, now.month, 1).isoformat()
     
-    # Use RPC or multi-query. For MVP, fetch recent.
     res = supabase.table("transactions").select("amount, type, date").gte("date", first_day).execute()
     transactions = res.data or []
     
     income = sum(t["amount"] for t in transactions if t["type"] == "INCOME")
     expenses = sum(t["amount"] for t in transactions if t["type"] == "EXPENSE")
     
-    # Mock chart data (TODO: Implement grouping on backend)
-    chart_data = [] # [{ "day": "01", "income": 100 }, ...] 
-    
     return {
         "income": income,
         "expenses": expenses,
         "balance": income - expenses,
         "month": now.strftime("%B"),
-        "chart_data": chart_data
+        "chart_data": [] 
     }
 
 # --- PROVISION & STOCK ---
@@ -119,31 +125,44 @@ def read_stock():
 
 @app.post("/stock", response_model=schemas.StockItem)
 def create_stock_item(item: schemas.StockItemCreate):
-    # 1. Create Expense Category ID lookup
-    cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
-    cat_id = cat_res.data["id"] if cat_res.data else 8
+    # 1. Look up Expense Category (Flexible)
+    cat_id = None
+    try:
+        cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
+        if cat_res.data:
+            cat_id = cat_res.data["id"]
+    except:
+        pass
 
     # 2. Create Purchase Transaction (Expense)
-    tx_data = {
-        "date": datetime.now().isoformat(),
-        "amount": item.cost_amount,
-        "description": f"Compra Stock: {item.name}",
-        "type": "EXPENSE",
-        "category_id": cat_id
-    }
-    tx_res = supabase.table("transactions").insert(tx_data).execute()
-    purchase_tx = tx_res.data[0] if tx_res.data else None
+    purchase_tx_id = None
+    try:
+        tx_data = {
+            "date": datetime.now().isoformat(),
+            "amount": item.cost_amount,
+            "description": f"Compra Stock: {item.name}",
+            "type": "EXPENSE",
+            "category_id": cat_id
+        }
+        tx_res = supabase.table("transactions").insert(tx_data).execute()
+        if tx_res.data:
+            purchase_tx_id = tx_res.data[0]["id"]
+    except Exception as tx_err:
+        logger.warning(f"Could not create transaction for stock item: {tx_err}")
     
     # 3. Create Stock Item
     stock_data = item.model_dump()
-    stock_data["purchase_tx_id"] = purchase_tx["id"] if purchase_tx else None
+    stock_data["purchase_tx_id"] = purchase_tx_id
     stock_data["purchase_date"] = datetime.now().isoformat()
     stock_data["quantity"] = stock_data["initial_quantity"]
     stock_data["status"] = "AVAILABLE"
     
-    # Remove unit_cost as it is generated by SQL
+    # Clean payload (Exclude Generated Column)
     stock_data.pop("unit_cost", None)
-    if stock_data.get("category_id") == 0: stock_data["category_id"] = None
+    
+    # Fixed: Only set category_id if it's not 0 or null
+    if not stock_data.get("category_id") or stock_data.get("category_id") == 0:
+        stock_data["category_id"] = None
 
     stock_res = supabase.table("stock_items").insert(stock_data).execute()
     if not stock_res.data:
@@ -154,10 +173,11 @@ def create_stock_item(item: schemas.StockItemCreate):
 @app.put("/stock/{item_id}", response_model=schemas.StockItem)
 def update_stock_item(item_id: int, item: schemas.StockItemCreate):
     data = item.model_dump()
-    data.pop("unit_cost", None) # Ensure generated column is not sent
+    data.pop("unit_cost", None)
+    if not data.get("category_id") or data.get("category_id") == 0:
+        data["category_id"] = None
+        
     res = supabase.table("stock_items").update(data).eq("id", item_id).execute()
-    if not res.data:
-        raise HTTPException(status_code=404, detail="Item not found")
     return res.data[0]
 
 @app.delete("/stock/{item_id}")
@@ -165,72 +185,62 @@ def delete_stock_item(item_id: int):
     supabase.table("stock_items").delete().eq("id", item_id).execute()
     return {"status": "deleted"}
 
-# --- SALES & BATCH SALES ---
+# --- BATCH SALES ---
 @app.post("/sales")
 def create_batch_sale(batch: schemas.BatchSaleRequest):
-    # 1. Look up Sale Category
-    cat_res = supabase.table("categories").select("id").eq("name", "Venta de Bebidas").single().execute()
-    cat_id = cat_res.data["id"] if cat_res.data else 7
+    cat_id = None
+    try:
+        cat_res = supabase.table("categories").select("id").eq("name", "Venta de Bebidas").single().execute()
+        if cat_res.data: cat_id = cat_res.data["id"]
+    except: pass
     
     total_sale_amount = 0.0
     processed_items = []
     
-    # 2. Process each item (check stock, calc total)
     for s_item in batch.items:
-        # Check stock
         res = supabase.table("stock_items").select("*").eq("id", s_item.item_id).single().execute()
         product = res.data
-        if not product: raise HTTPException(status_code=404, detail=f"Product {s_item.item_id} not found")
-        if product["quantity"] < s_item.quantity:
-            raise HTTPException(status_code=400, detail=f"Stock insuficiente para {product['name']}")
+        if not product: raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
         
         item_total = (product["selling_price"] or 0) * s_item.quantity
         total_sale_amount += item_total
-        processed_items.append({
-            "product": product,
-            "quantity": s_item.quantity,
-            "total": item_total
-        })
+        processed_items.append({"product": product, "quantity": s_item.quantity, "total": item_total})
 
-    # 3. Create Income Transaction
+    # Create Income Transaction
     tx_data = {
         "date": datetime.now().isoformat(),
         "amount": total_sale_amount,
-        "description": f"Venta Lote: {batch.description} ({len(batch.items)} items)",
+        "description": f"Venta: {batch.description}",
         "type": "INCOME",
         "category_id": cat_id
     }
     tx_res = supabase.table("transactions").insert(tx_data).execute()
-    main_tx = tx_res.data[0]
+    main_tx_id = tx_res.data[0]["id"] if tx_res.data else None
     
-    # 4. Record Sales and update Stock
+    # Record and update
     for p in processed_items:
         sale_data = {
             "stock_item_id": p["product"]["id"],
             "quantity": p["quantity"],
             "description": batch.description,
             "sale_price_total": p["total"],
-            "sale_tx_id": main_tx["id"]
+            "sale_tx_id": main_tx_id
         }
         supabase.table("sales").insert(sale_data).execute()
         
-        # Update Quantity
         new_qty = p["product"]["quantity"] - p["quantity"]
         supabase.table("stock_items").update({
             "quantity": new_qty,
             "status": "DEPLETED" if new_qty <= 0 else "AVAILABLE"
         }).eq("id", p["product"]["id"]).execute()
         
-    return {"status": "success", "total": total_sale_amount, "transaction_id": main_tx["id"]}
+    return {"status": "success", "total": total_sale_amount}
 
-# --- FINANCES & EXPENSES ---
+# --- FINANCES ---
 @app.get("/finances/summary")
 def get_finance_summary(month: int, year: int):
     start_date = date(year, month, 1).isoformat()
-    if month == 12:
-        end_date = date(year + 1, 1, 1).isoformat()
-    else:
-        end_date = date(year, month + 1, 1).isoformat()
+    end_date = date(year + 1, 1, 1).isoformat() if month == 12 else date(year, month + 1, 1).isoformat()
         
     res = supabase.table("transactions").select("amount, type").gte("date", start_date).lt("date", end_date).execute()
     txs = res.data or []
@@ -238,20 +248,12 @@ def get_finance_summary(month: int, year: int):
     income = sum(t["amount"] for t in txs if t["type"] == "INCOME")
     expense = sum(t["amount"] for t in txs if t["type"] == "EXPENSE")
     
-    return {
-        "total_income": income,
-        "total_expense": expense,
-        "net_balance": income - expense
-    }
+    return {"total_income": income, "total_expense": expense, "net_balance": income - expense}
 
 @app.get("/expenses", response_model=List[schemas.ExpenseDocument])
 def read_expenses(month: int, year: int):
-    # In a real app we'd filter by date in SQL. 
-    # For now fetch and filter
     res = supabase.table("expense_documents").select("*").execute()
-    docs = res.data or []
-    # Filter by month/year in description or date if available
-    return docs
+    return res.data or []
 
 @app.post("/expenses/upload")
 async def upload_expense(
@@ -260,7 +262,7 @@ async def upload_expense(
     date: str = Form(...),
     file: UploadFile = File(...)
 ):
-    # 1. Save File (In real app, upload to Supabase Storage)
+    # Save Local (Vercel has limited persistence, so this is temporary)
     file_id = str(uuid.uuid4())[:8]
     ext = file.filename.split(".")[-1]
     filename = f"{file_id}_{file.filename}"
@@ -269,38 +271,10 @@ async def upload_expense(
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # 2. Record in Supabase
-    doc_data = {
-        "description": description,
-        "amount": amount,
-        "date": date,
-        "file_path": filepath,
-        "file_type": ext
-    }
+    doc_data = {"description": description, "amount": amount, "date": date, "file_path": filepath, "file_type": ext}
     res = supabase.table("expense_documents").insert(doc_data).execute()
     
-    # 3. Create associated Expense Transaction
-    cat_res = supabase.table("categories").select("id").eq("name", "Gastos Fijos").single().execute()
-    cat_id = cat_res.data["id"] if cat_res.data else 9
-    
-    tx_data = {
-        "date": date,
-        "amount": amount,
-        "description": f"Gasto Doc: {description}",
-        "type": "EXPENSE",
-        "category_id": cat_id
-    }
-    supabase.table("transactions").insert(tx_data).execute()
-    
     return res.data[0]
-
-# --- SERVING FILES ---
-@app.get("/uploads/{filename}")
-def serve_upload(filename: str):
-    path = os.path.join(UPLOAD_DIR, filename)
-    if os.path.exists(path):
-        return FileResponse(path)
-    raise HTTPException(status_code=404)
 
 # --- SEED & RESET ---
 @app.get("/seed-categories")
@@ -322,41 +296,31 @@ def seed_categories():
 
 @app.api_route("/reset-db", methods=["GET", "POST"])
 def reset_db_placeholder():
-    return {"message": "Please use the Supabase SQL Editor with the provided schema.sql script to reset the DB structure."}
+    return {"message": "Usa la consola de Supabase con el archivo schema.sql para resetear la base."}
 
 # --- REPORTING ---
 @app.get("/reports/accounting/pdf")
 def generate_accounting_report(month: int, year: int):
-    # Lazy Import
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
     
     start_date = date(year, month, 1).isoformat()
-    if month == 12: end_date = date(year + 1, 1, 1).isoformat()
-    else: end_date = date(year, month + 1, 1).isoformat()
+    end_date = date(year + 1, 1, 1).isoformat() if month == 12 else date(year, month + 1, 1).isoformat()
     
     res = supabase.table("transactions").select("*").gte("date", start_date).lt("date", end_date).execute()
     transactions = res.data or []
     
     tx_rows = []
-    total_inc = 0.0
-    total_exp = 0.0
-    
+    total_inc = total_exp = 0.0
     for tx in transactions:
-        tx_rows.append([
-            tx["date"][:10],
-            tx.get("description", "")[:40],
-            tx["type"],
-            f"${tx['amount']:,.2f}"
-        ])
+        tx_rows.append([tx["date"][:10], tx.get("description", "")[:40], tx["type"], f"${tx['amount']:,.2f}"])
         if tx["type"] == "INCOME": total_inc += tx["amount"]
         else: total_exp += tx["amount"]
         
-    filename = f"Reporte_Comercial_{year}_{month}.pdf"
+    filename = f"Reporte_{year}_{month}.pdf"
     filepath = os.path.join("/tmp", filename)
-    
     doc = SimpleDocTemplate(filepath, pagesize=A4)
     elements = []
     styles = getSampleStyleSheet()
@@ -367,15 +331,9 @@ def generate_accounting_report(month: int, year: int):
     
     if tx_rows:
         t = Table([["Fecha", "Descripción", "Tipo", "Monto"]] + tx_rows, colWidths=[80, 200, 60, 100])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('GRID', (0,0), (-1,-1), 1, colors.black)
-        ]))
+        t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.grey), ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke), ('GRID', (0,0), (-1,-1), 1, colors.black)]))
         elements.append(t)
-    else:
-        elements.append(Paragraph("Sin movimientos en el período.", styles['Normal']))
-
+    
     elements.append(Spacer(1, 40))
     elements.append(Paragraph(f"TOTAL INGRESOS: ${total_inc:,.2f}", styles['Normal']))
     elements.append(Paragraph(f"TOTAL EGRESOS: ${total_exp:,.2f}", styles['Normal']))
