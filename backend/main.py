@@ -21,7 +21,22 @@ from database import SessionLocal, engine
 # Create tables
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="NovaManager Commercial - API")
+# Configurar root_path para Vercel
+# Vercel pasa la ruta completa /api/endpoint, pero FastAPI espera /endpoint
+# root_path="/api" le dice a FastAPI que ignore ese prefijo.
+root_path = "/api" if os.getenv("VERCEL") else ""
+
+app = FastAPI(title="NovaManager Commercial - API", root_path=root_path)
+
+# --- HEALTH CHECK ---
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    try:
+        # Intentar una consulta simple
+        db.execute("SELECT 1")
+        return {"status": "ONLINE", "database": "CONNECTED", "environment": "VERCEL" if os.getenv("VERCEL") else "LOCAL"}
+    except Exception as e:
+        return {"status": "ERROR", "database": str(e), "environment": "VERCEL" if os.getenv("VERCEL") else "LOCAL"}
 
 # CORS
 app.add_middleware(
