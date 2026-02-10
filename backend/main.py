@@ -79,10 +79,20 @@ def perform_health_check():
         # Intentar conectar
         db = SessionLocal()
         db.execute(func.text("SELECT 1"))
+        
+        # DEEP INSPECTION: Check actual columns in DB
+        columns_info = []
+        try:
+            result = db.execute(func.text("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'stock_items';"))
+            columns_info = [{"name": row[0], "type": row[1]} for row in result]
+        except Exception as schema_e:
+            columns_info = [f"Error checking schema: {str(schema_e)}"]
+
         db.close()
         return {
             "status": "ONLINE", 
             "db_connection": "SUCCESS", 
+            "stock_items_columns": columns_info, # DIAGNOSTIC DATA
             "db_type": db_type,
             "masked_url": masked_url,
             "env_vars": env_vars
@@ -94,6 +104,7 @@ def perform_health_check():
             "db_connection": "FAILED", 
             "error_detail": str(e),
             "traceback": traceback.format_exc(),
+            "stock_items_columns": "Could not fetch (DB Connection Failed)",
             "db_type": db_type,
             "masked_url": masked_url,
             "env_vars": env_vars
