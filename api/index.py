@@ -89,10 +89,20 @@ async def catch_all(request: Request, path_name: str):
                 }
             )
         
+        # Decode headers for Starlette Response (ASGI returns bytes, Starlette expects strings)
+        decoded_headers = {}
+        for k, v in capturer.headers:
+            try:
+                key_str = k.decode("latin-1")
+                val_str = v.decode("latin-1")
+                decoded_headers[key_str] = val_str
+            except:
+                pass
+
         return Response(
             content=capturer.body, 
             status_code=capturer.status_code, 
-            headers=dict(capturer.headers)
+            headers=decoded_headers
         )
     
     # If backend failed to load
