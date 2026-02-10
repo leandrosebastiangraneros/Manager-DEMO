@@ -234,7 +234,7 @@ const Stock = () => {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right text-gray-400 font-mono text-sm">{formatMoney(item.unit_cost)}</td>
-                                                <td className="p-4 text-right text-black font-mono font-bold text-sm bg-surface-highlight/10">{formatMoney(item.selling_price)}</td>
+                                                <td className="p-4 text-right text-txt-primary font-mono font-bold text-sm bg-surface-highlight/10">{formatMoney(item.selling_price)}</td>
                                                 <td className="p-4 text-right font-mono font-bold text-sm text-green-600">
                                                     {formatMoney(item.selling_price - item.unit_cost)}
                                                 </td>
@@ -252,10 +252,10 @@ const Stock = () => {
                                                     })()}
                                                 </td>
                                                 <td className="p-4 text-center pr-6">
-                                                    <div className="flex gap-2 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex gap-2 justify-center">
                                                         <button
                                                             onClick={() => openEditModal(item)}
-                                                            className="p-1.5 text-gray-400 hover:bg-gray-100 hover:text-black rounded-lg transition-all"
+                                                            className="p-1.5 text-txt-dim hover:bg-surface-highlight hover:text-txt-primary rounded-lg transition-all"
                                                             title="Editar"
                                                         >
                                                             <span className="material-icons text-sm">edit</span>
@@ -263,13 +263,14 @@ const Stock = () => {
                                                         {item.status === 'AVAILABLE' && (
                                                             <button
                                                                 onClick={() => handleSellClick(item)}
-                                                                className="p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 rounded-lg transition-all"
+                                                                className="p-1.5 text-txt-dim hover:bg-green-500/10 hover:text-green-500 rounded-lg transition-all"
                                                                 title="Vender"
                                                             >
                                                                 <span className="material-icons text-sm">shopping_cart</span>
                                                             </button>
                                                         )}
                                                     </div>
+
                                                 </td>
                                             </tr>
                                         ))}
@@ -279,54 +280,56 @@ const Stock = () => {
                         </div>
                     );
                 })}
-            </div>
+            </div >
 
             {/* Mobile Cards View */}
-            <div className="md:hidden space-y-4">
-                {items.length === 0 ? (
-                    <div className="text-center text-gray-400 p-8 text-sm">Inventario Vacío</div>
-                ) : (
-                    items.map(item => (
-                        <div key={item.id} className="p-5 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="text-base font-bold text-txt-primary mb-1">{item.name}</h3>
-                                    <p className="text-[10px] text-gray-400 font-mono">Costo: {formatMoney(item.unit_cost)}</p>
+            < div className="md:hidden space-y-4" >
+                {
+                    items.length === 0 ? (
+                        <div className="text-center text-gray-400 p-8 text-sm">Inventario Vacío</div>
+                    ) : (
+                        items.map(item => (
+                            <div key={item.id} className="p-5 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="text-base font-bold text-txt-primary mb-1">{item.name}</h3>
+                                        <p className="text-[10px] text-gray-400 font-mono">Costo: {formatMoney(item.unit_cost)}</p>
+                                    </div>
+                                    <StatusBadge status={item.status === 'AVAILABLE' ? 'En Stock' : 'Agotado'} />
                                 </div>
-                                <StatusBadge status={item.status === 'AVAILABLE' ? 'En Stock' : 'Agotado'} />
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4 bg-surface-highlight/10 p-3 rounded-lg border border-gray-100/10">
-                                <div className="text-center">
-                                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Stock</span>
-                                    <span className={`text-lg font-mono font-bold ${item.quantity > 0 ? 'text-txt-primary' : 'text-red-500'}`}>
-                                        {item.quantity}
-                                    </span>
+                                <div className="grid grid-cols-2 gap-4 mb-4 bg-surface-highlight/10 p-3 rounded-lg border border-gray-100/10">
+                                    <div className="text-center">
+                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Stock</span>
+                                        <span className={`text-lg font-mono font-bold ${item.quantity > 0 ? 'text-txt-primary' : 'text-red-500'}`}>
+                                            {item.quantity}
+                                        </span>
+                                    </div>
+                                    <div className="text-center border-l border-gray-200">
+                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Monto Total</span>
+                                        <span className="text-lg font-mono font-bold text-txt-primary">
+                                            {formatMoney(item.cost_amount)}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-center border-l border-gray-200">
-                                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Monto Total</span>
-                                    <span className="text-lg font-mono font-bold text-txt-primary">
-                                        {formatMoney(item.cost_amount)}
-                                    </span>
-                                </div>
-                            </div>
 
-                            {item.status === 'AVAILABLE' && (
-                                <Button
-                                    variant="secondary"
-                                    className="w-full rounded-lg border border-gray-200 text-gray-700 hover:bg-black hover:text-white"
-                                    onClick={() => handleSellClick(item)}
-                                >
-                                    REGISTRAR SALIDA
-                                </Button>
-                            )}
-                        </div>
-                    ))
-                )}
-            </div>
+                                {item.status === 'AVAILABLE' && (
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full rounded-lg border border-gray-200 text-gray-700 hover:bg-black hover:text-white"
+                                        onClick={() => handleSellClick(item)}
+                                    >
+                                        REGISTRAR SALIDA
+                                    </Button>
+                                )}
+                            </div>
+                        ))
+                    )
+                }
+            </div >
 
             {/* Add Modal */}
-            <Modal
+            < Modal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 className="max-w-xl bg-surface rounded-2xl shadow-2xl border border-gray-100/10 p-0 overflow-hidden"
@@ -424,10 +427,10 @@ const Stock = () => {
                         <Button type="submit" variant="primary" className="flex-1 shadow-lg shadow-black/20">Confirmar Agregado</Button>
                     </div>
                 </form>
-            </Modal>
+            </Modal >
 
             {/* Sell Modal */}
-            <Modal
+            < Modal
                 isOpen={isSellModalOpen}
                 onClose={() => setIsSellModalOpen(false)}
                 className="max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 p-0 overflow-hidden"
@@ -531,8 +534,8 @@ const Stock = () => {
                         </div>
                     </form>
                 </div>
-            </Modal>
-        </div>
+            </Modal >
+        </div >
     );
 };
 
