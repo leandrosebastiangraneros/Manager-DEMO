@@ -20,15 +20,17 @@ from database import SessionLocal, engine
 
 # Create tables
 # Create tables
-# try:
-#     models.Base.metadata.create_all(bind=engine)
-# except Exception as e:
-#     print(f"Error initializing database: {e}")
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Error initializing database: {e}")
 
 # Configurar root_path para Vercel
-# root_path = "/api" if os.getenv("VERCEL") else ""
+# Vercel pasa la ruta completa /api/endpoint, pero FastAPI espera /endpoint
+# root_path="/api" le dice a FastAPI que ignore ese prefijo.
+root_path = "/api" if os.getenv("VERCEL") else ""
 
-app = FastAPI(title="NovaManager Commercial - API")
+app = FastAPI(title="NovaManager Commercial - API", root_path=root_path)
 
 # --- HEALTH CHECK ---
 @app.get("/health")

@@ -20,8 +20,7 @@ def get_backend_app():
     except Exception as e:
         return None, traceback.format_exc()
 
-@app.get("/api/health")
-@app.get("/health")
+@app.get("/api/wrapper-health")
 async def health_check():
     backend, error = get_backend_app()
     
