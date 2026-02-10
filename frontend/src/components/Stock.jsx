@@ -176,7 +176,7 @@ const Stock = () => {
         <div className="space-y-8 pb-20 animate-[fadeIn_0.5s_ease-out]">
             <header className="flex justify-between items-end mb-8">
                 <div>
-                    <h1 className="text-3xl font-sans font-extrabold text-black tracking-tight leading-none mb-2">
+                    <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-2">
                         Inventario
                     </h1>
                     <p className="text-gray-500 text-sm font-medium">
@@ -207,10 +207,10 @@ const Stock = () => {
                                 <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{categoryItems.length} items</span>
                             </h2>
 
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-gray-50/50 text-gray-500 text-xs font-bold tracking-wider border-b border-gray-100">
+                                        <tr className="bg-surface-highlight/30 text-txt-dim text-xs font-bold tracking-wider border-b border-gray-100/10">
                                             <th className="p-4 font-medium pl-6">Producto</th>
                                             <th className="p-4 text-center font-medium">Stock</th>
                                             <th className="p-4 text-right font-medium">Costo</th>
@@ -222,9 +222,9 @@ const Stock = () => {
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
                                         {categoryItems.map(item => (
-                                            <tr key={item.id} className="hover:bg-gray-50/80 transition-colors group">
+                                            <tr key={item.id} className="hover:bg-surface-highlight/10 transition-colors group">
                                                 <td className="p-4 pl-6">
-                                                    <div className="font-bold text-gray-900 mb-0.5">{item.name}</div>
+                                                    <div className="font-bold text-txt-primary mb-0.5">{item.name}</div>
                                                     <div className="text-[10px] text-gray-400 font-mono">ID: {item.id.toString().padStart(4, '0')}</div>
                                                 </td>
                                                 <td className="p-4 text-center">
@@ -234,7 +234,7 @@ const Stock = () => {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right text-gray-400 font-mono text-sm">{formatMoney(item.unit_cost)}</td>
-                                                <td className="p-4 text-right text-black font-mono font-bold text-sm bg-gray-50/30">{formatMoney(item.selling_price)}</td>
+                                                <td className="p-4 text-right text-black font-mono font-bold text-sm bg-surface-highlight/10">{formatMoney(item.selling_price)}</td>
                                                 <td className="p-4 text-right font-mono font-bold text-sm text-green-600">
                                                     {formatMoney(item.selling_price - item.unit_cost)}
                                                 </td>
@@ -277,25 +277,25 @@ const Stock = () => {
                     <div className="text-center text-gray-400 p-8 text-sm">Inventario Vacío</div>
                 ) : (
                     items.map(item => (
-                        <div key={item.id} className="p-5 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+                        <div key={item.id} className="p-5 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 className="text-base font-bold text-black mb-1">{item.name}</h3>
+                                    <h3 className="text-base font-bold text-txt-primary mb-1">{item.name}</h3>
                                     <p className="text-[10px] text-gray-400 font-mono">Costo: {formatMoney(item.unit_cost)}</p>
                                 </div>
                                 <StatusBadge status={item.status === 'AVAILABLE' ? 'En Stock' : 'Agotado'} />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div className="grid grid-cols-2 gap-4 mb-4 bg-surface-highlight/10 p-3 rounded-lg border border-gray-100/10">
                                 <div className="text-center">
                                     <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Stock</span>
-                                    <span className={`text-lg font-mono font-bold ${item.quantity > 0 ? 'text-black' : 'text-red-500'}`}>
+                                    <span className={`text-lg font-mono font-bold ${item.quantity > 0 ? 'text-txt-primary' : 'text-red-500'}`}>
                                         {item.quantity}
                                     </span>
                                 </div>
                                 <div className="text-center border-l border-gray-200">
                                     <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Monto Total</span>
-                                    <span className="text-lg font-mono font-bold text-black">
+                                    <span className="text-lg font-mono font-bold text-txt-primary">
                                         {formatMoney(item.cost_amount)}
                                     </span>
                                 </div>
@@ -319,10 +319,10 @@ const Stock = () => {
             <Modal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                className="max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 p-0 overflow-hidden"
+                className="max-w-xl bg-surface rounded-2xl shadow-2xl border border-gray-100/10 p-0 overflow-hidden"
             >
-                <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-black flex items-center gap-2">
+                <div className="bg-surface px-6 py-4 border-b border-gray-100/10 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-txt-primary flex items-center gap-2">
                         <span className="material-icons text-gray-400">add_box</span>
                         Nuevo Producto
                     </h2>
@@ -338,7 +338,7 @@ const Stock = () => {
                             <input
                                 autoFocus
                                 type="text"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black transition-all placeholder:text-gray-400"
+                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
                                 placeholder="ej. Cerveza Patagonia"
                                 value={newItemName}
                                 onChange={e => setNewItemName(e.target.value)}
@@ -348,7 +348,7 @@ const Stock = () => {
                         <div>
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
                             <select
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black transition-all"
+                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all"
                                 value={newItemCategoryId}
                                 onChange={e => setNewItemCategoryId(e.target.value)}
                             >
@@ -365,7 +365,7 @@ const Stock = () => {
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cantidad</label>
                             <input
                                 type="number"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black font-mono transition-all"
+                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                 value={newItemQuantity}
                                 onChange={e => setNewItemQuantity(e.target.value)}
                                 required
@@ -377,7 +377,7 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-black focus:ring-1 focus:ring-black outline-none text-black font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemCost}
                                     onChange={e => setNewItemCost(e.target.value)}
@@ -391,7 +391,7 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-black font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}
@@ -402,9 +402,9 @@ const Stock = () => {
                     </div>
 
                     {newItemQuantity > 0 && newItemCost > 0 && (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                            <p className="text-xs text-gray-500">
-                                Costo Unitario Calculado: <span className="text-lg font-bold font-mono text-black block mt-1">{formatMoney(newItemCost / newItemQuantity)}</span>
+                        <div className="bg-surface-highlight/10 p-4 rounded-lg border border-gray-200/20 text-center">
+                            <p className="text-xs text-txt-dim">
+                                Costo Unitario Calculado: <span className="text-lg font-bold font-mono text-txt-primary block mt-1">{formatMoney(newItemCost / newItemQuantity)}</span>
                             </p>
                         </div>
                     )}

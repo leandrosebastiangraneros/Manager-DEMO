@@ -96,21 +96,21 @@ const Reportes = () => {
         <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
                 <div>
-                    <h1 className="text-3xl font-sans font-extrabold text-black tracking-tight mb-2 flex items-center gap-2">
+                    <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight mb-2 flex items-center gap-2">
                         <span className="material-icons text-gray-400">analytics</span>
                         Reportes Financieros
                     </h1>
                     <p className="text-gray-500 text-sm font-medium">Balance Mensual y Gestión de Comprobantes</p>
                 </div>
 
-                <div className="flex items-center bg-white border border-gray-200 shadow-sm p-1 rounded-lg">
-                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-black">
+                <div className="flex items-center bg-surface border border-gray-200 shadow-sm p-1 rounded-lg">
+                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-surface-highlight rounded-md transition-colors text-gray-400 hover:text-txt-primary">
                         <span className="material-icons">chevron_left</span>
                     </button>
-                    <span className="font-bold text-sm min-w-[150px] text-center capitalize text-black font-mono">
+                    <span className="font-bold text-sm min-w-[150px] text-center capitalize text-txt-primary font-mono">
                         {date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
                     </span>
-                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-black">
+                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-surface-highlight rounded-md transition-colors text-gray-400 hover:text-txt-primary">
                         <span className="material-icons">chevron_right</span>
                     </button>
                 </div>
@@ -118,25 +118,25 @@ const Reportes = () => {
 
             {/* FINANCIAL SUMMARY */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="p-6 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="material-icons text-6xl text-black">trending_up</span>
+                        <span className="material-icons text-6xl text-txt-primary">trending_up</span>
                     </div>
                     <div>
-                        <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">Ingresos Totales</div>
-                        <div className="text-4xl font-mono font-bold text-black tracking-tighter">
+                        <div className="text-txt-dim text-[10px] font-bold uppercase tracking-widest mb-2">Ingresos Totales</div>
+                        <div className="text-4xl font-mono font-bold text-txt-primary tracking-tighter">
                             {formatMoney(summary?.total_income)}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="p-6 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="material-icons text-6xl text-black">trending_down</span>
+                        <span className="material-icons text-6xl text-txt-primary">trending_down</span>
                     </div>
                     <div>
-                        <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">Egresos Totales</div>
-                        <div className="text-4xl font-mono font-bold text-black tracking-tighter">
+                        <div className="text-txt-dim text-[10px] font-bold uppercase tracking-widest mb-2">Egresos Totales</div>
+                        <div className="text-4xl font-mono font-bold text-txt-primary tracking-tighter">
                             {formatMoney(summary?.total_expense)}
                         </div>
                     </div>
@@ -161,9 +161,9 @@ const Reportes = () => {
             </div>
 
             {/* EXPENSES LIST */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h2 className="text-lg font-bold text-black flex items-center gap-2 font-display">
+            <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden flex flex-col h-[500px]">
+                <div className="p-6 border-b border-gray-100/10 flex justify-between items-center bg-surface-highlight/10">
+                    <h2 className="text-lg font-bold text-txt-primary flex items-center gap-2 font-display">
                         <span className="material-icons text-gray-400">receipt_long</span>
                         Libro de Gastos
                     </h2>
@@ -172,7 +172,7 @@ const Reportes = () => {
                         size="sm"
                         variant="primary"
                         icon={<span className="material-icons text-xs">add</span>}
-                        className="shadow-sm border border-gray-200 bg-white text-black hover:bg-black hover:text-white transition-all"
+                        className="shadow-sm border border-gray-200 bg-surface text-txt-primary hover:bg-black hover:text-white transition-all"
                     >
                         REGISTRAR COMPROBANTE
                     </Button>
@@ -180,7 +180,7 @@ const Reportes = () => {
 
                 <div className="overflow-y-auto custom-scrollbar flex-1">
                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-white text-gray-500 text-xs font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-gray-100">
+                        <thead className="bg-surface text-txt-dim text-xs font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-gray-100/10">
                             <tr>
                                 <th className="p-4 pl-6">Fecha</th>
                                 <th className="p-4">Descripción</th>
@@ -188,17 +188,17 @@ const Reportes = () => {
                                 <th className="p-4 text-center pr-6">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 font-mono text-sm">
+                        <tbody className="divide-y divide-gray-50/30 font-mono text-sm">
                             {expenses.length === 0 ? (
                                 <tr>
                                     <td colSpan="4" className="p-12 text-center text-gray-400 italic">No hay registros para este período.</td>
                                 </tr>
                             ) : (
                                 expenses.map(exp => (
-                                    <tr key={exp.id} className="hover:bg-gray-50 transition-colors group">
-                                        <td className="p-4 pl-6 text-gray-500">{new Date(exp.date).toLocaleDateString()}</td>
-                                        <td className="p-4 text-black font-sans font-medium">{exp.description}</td>
-                                        <td className="p-4 text-black font-bold">{formatMoney(exp.amount)}</td>
+                                    <tr key={exp.id} className="hover:bg-surface-highlight/10 transition-colors group">
+                                        <td className="p-4 pl-6 text-txt-dim">{new Date(exp.date).toLocaleDateString()}</td>
+                                        <td className="p-4 text-txt-primary font-sans font-medium">{exp.description}</td>
+                                        <td className="p-4 text-txt-primary font-bold">{formatMoney(exp.amount)}</td>
                                         <td className="p-4 text-center pr-6">
                                             <a
                                                 href={`${API_URL}/${exp.file_path}`}
@@ -221,9 +221,9 @@ const Reportes = () => {
             {/* UPLOAD MODAL */}
             {uploadModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden relative border border-gray-100">
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
-                            <h3 className="text-black font-bold font-sans tracking-tight">Nuevo Gasto Administrativo</h3>
+                    <div className="w-full max-w-md bg-surface rounded-xl shadow-2xl overflow-hidden relative border border-gray-100/10">
+                        <div className="p-5 border-b border-gray-100/10 flex justify-between items-center bg-surface">
+                            <h3 className="text-txt-primary font-bold font-sans tracking-tight">Nuevo Gasto Administrativo</h3>
                             <button onClick={() => setUploadModalOpen(false)} className="text-gray-400 hover:text-black transition-colors">
                                 <span className="material-icons">close</span>
                             </button>

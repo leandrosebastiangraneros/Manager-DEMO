@@ -21,11 +21,11 @@ const Button = ({
 
     // Style variants (Professional Monochrome)
     const variants = {
-        primary: "bg-black text-white border-black hover:bg-white hover:text-black",
-        secondary: "bg-transparent text-black border-black hover:bg-black hover:text-white",
-        ghost: "bg-transparent text-txt-secondary border-transparent hover:text-black hover:bg-black/5",
-        danger: "bg-transparent text-black border-panel-border hover:bg-black/5",
-        neon: "bg-black text-white border-black hover:bg-white hover:text-black",
+        primary: "bg-accent text-void border-accent hover:bg-void hover:text-accent hover:border-accent",
+        secondary: "bg-transparent text-txt-primary border-txt-primary hover:bg-accent hover:text-void",
+        ghost: "bg-transparent text-txt-secondary border-transparent hover:text-txt-primary hover:bg-surface-highlight",
+        danger: "bg-transparent text-txt-primary border-panel-border hover:bg-surface-highlight",
+        neon: "bg-accent text-void border-accent hover:bg-void hover:text-accent",
     };
 
     return (

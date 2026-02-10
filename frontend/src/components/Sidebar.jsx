@@ -14,10 +14,10 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
     return (
         <aside
             className={`
+                hidden md:flex flex-col
                 fixed md:relative top-0 left-0 h-full z-50
-                bg-surface border-r border-panel-border transition-all duration-300 ease-in-out flex flex-col
+                bg-surface border-r border-panel-border transition-all duration-300 ease-in-out
                 ${isCollapsed ? 'w-20' : 'w-72'}
-                ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}
         >
             <div className="h-full flex flex-col">
@@ -27,9 +27,9 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                         flex items-center justify-center transition-all duration-500
                         ${isCollapsed ? 'w-10 h-10' : 'w-full px-4 py-3'}
                     `}>
-                        <span className="material-icons text-black text-2xl">grid_view</span>
+                        <span className="material-icons text-txt-primary text-2xl">grid_view</span>
                         {!isCollapsed && (
-                            <span className="ml-3 font-sans font-extrabold tracking-tight text-black text-xl">NOVA</span>
+                            <span className="ml-3 font-sans font-extrabold tracking-tight text-txt-primary text-xl">GESTOR</span>
                         )}
                     </div>
                 </div>
@@ -43,8 +43,8 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                             className={`
                                 w-full flex items-center gap-4 p-4 transition-all duration-200 group relative
                                 ${activeTab === item.id
-                                    ? 'bg-black text-white shadow-md'
-                                    : 'text-gray-500 hover:text-black hover:bg-gray-100'}
+                                    ? 'bg-accent text-void shadow-md'
+                                    : 'text-txt-dim hover:text-txt-primary hover:bg-surface-highlight'}
                             `}
                         >
                             <span className={`material-icons text-xl transition-transform duration-200`}>
@@ -63,7 +63,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                 <div className="p-4 border-t border-panel-border mt-auto">
                     <button
                         onClick={toggleCollapse}
-                        className="w-full flex items-center gap-4 p-4 text-txt-primary hover:text-black hover:bg-black/5 transition-all group"
+                        className="w-full flex items-center gap-4 p-4 text-txt-primary hover:text-txt-primary hover:bg-surface-highlight/10 transition-all group"
                     >
                         <span className={`material-icons transition-transform duration-500 ${isCollapsed ? 'rotate-180' : ''}`}>
                             chevron_left

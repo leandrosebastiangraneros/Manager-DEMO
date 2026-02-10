@@ -61,16 +61,16 @@ const Dashboard = () => {
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest font-bold">Sistema Operativo Conectado</span>
                     </div>
-                    <h1 className="text-3xl font-sans font-extrabold text-black tracking-tight leading-none">
+                    <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight leading-none">
                         Panel de Control
                     </h1>
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <div className="text-right">
+                    <div className="text-left md:text-right">
                         <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Estado del Sistema</div>
-                        <div className="flex items-center justify-end gap-2">
-                            <span className="text-xs font-mono text-black font-bold">{systemHealth.status}</span>
+                        <div className="flex items-center justify-start md:justify-end gap-2">
+                            <span className="text-xs font-mono text-txt-primary font-bold">{systemHealth.status}</span>
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         </div>
                     </div>
@@ -79,16 +79,16 @@ const Dashboard = () => {
 
             {/* Main KPIs: Revenue, Expenses, Net Balance */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><span className="material-icons text-5xl text-black">trending_up</span></div>
-                    <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">Ingresos {finances.month}</div>
-                    <div className="text-3xl font-mono font-bold text-black tracking-tighter">{formatMoney(finances.income)}</div>
+                <div className="p-6 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden group hover:shadow-md transition-shadow">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><span className="material-icons text-5xl text-txt-primary">trending_up</span></div>
+                    <div className="text-txt-dim text-[10px] font-bold uppercase tracking-widest mb-2">Ingresos {finances.month}</div>
+                    <div className="text-3xl font-mono font-bold text-txt-primary tracking-tighter">{formatMoney(finances.income)}</div>
                 </div>
 
-                <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><span className="material-icons text-5xl text-black">trending_down</span></div>
-                    <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">Egresos Mensuales</div>
-                    <div className="text-3xl font-mono font-bold text-black tracking-tighter">{formatMoney(finances.expenses)}</div>
+                <div className="p-6 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden group hover:shadow-md transition-shadow">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><span className="material-icons text-5xl text-txt-primary">trending_down</span></div>
+                    <div className="text-txt-dim text-[10px] font-bold uppercase tracking-widest mb-2">Egresos Mensuales</div>
+                    <div className="text-3xl font-mono font-bold text-txt-primary tracking-tighter">{formatMoney(finances.expenses)}</div>
                 </div>
 
                 <div className="p-6 bg-black text-white rounded-xl shadow-lg shadow-black/20 relative overflow-hidden group hover:shadow-xl hover:shadow-black/30 transition-all">
@@ -100,9 +100,9 @@ const Dashboard = () => {
 
             {/* Center Section: Chart & Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 p-6 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[400px]">
+                <div className="lg:col-span-2 p-6 bg-surface rounded-xl shadow-sm border border-gray-100/10 flex flex-col h-[400px]">
                     <div className="flex justify-between items-center mb-6">
-                        <div className="text-sm font-bold text-black uppercase tracking-widest flex items-center gap-2">
+                        <div className="text-sm font-bold text-txt-primary uppercase tracking-widest flex items-center gap-2">
                             <span className="material-icons text-gray-400">bar_chart</span> Rendimiento Comercial (v30d)
                         </div>
                     </div>
@@ -129,8 +129,8 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="lg:col-span-1 p-6 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div className="text-sm font-bold text-black uppercase tracking-widest flex items-center gap-2 mb-6">
+                <div className="lg:col-span-1 p-6 flex flex-col bg-surface rounded-xl shadow-sm border border-gray-100/10">
+                    <div className="text-sm font-bold text-txt-primary uppercase tracking-widest flex items-center gap-2 mb-6">
                         <span className="material-icons text-gray-400">notification_important</span> Alertas de Stock
                     </div>
                     <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -150,19 +150,19 @@ const Dashboard = () => {
 
             {/* Activity Trace */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+                <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100/10 bg-surface-highlight/30 flex items-center gap-2">
                         <span className="material-icons text-gray-400 text-sm">history</span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Trace de Actividad</span>
                     </div>
                     <div className="p-4 space-y-4">
                         {activityFeed.map(act => (
                             <div key={act.id} className="flex items-center gap-4 group">
-                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-black group-hover:text-white transition-all">
+                                <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center text-txt-dim group-hover:bg-accent group-hover:text-white transition-all">
                                     <span className="material-icons text-sm">{act.icon}</span>
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-xs font-bold text-black group-hover:text-gray-700 transition-colors">{act.msg}</div>
+                                    <div className="text-xs font-bold text-txt-primary group-hover:text-txt-secondary transition-colors">{act.msg}</div>
                                     <div className="text-[10px] text-gray-400 font-mono font-medium mt-0.5">{act.time}</div>
                                 </div>
                             </div>
@@ -171,9 +171,9 @@ const Dashboard = () => {
                 </div>
 
                 {/* Tech Snapshot */}
-                <div className="p-6 flex flex-col justify-center border border-dashed border-gray-300 rounded-xl bg-gray-50/30">
+                <div className="p-6 flex flex-col justify-center border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-surface-highlight/10">
                     <div className="flex items-center gap-4">
-                        <div className="text-4xl font-mono font-black text-gray-200 tracking-widest">DB</div>
+                        <div className="text-4xl font-mono font-black text-txt-dim/20 tracking-widest">DB</div>
                         <div>
                             <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">PostgreSQL Instance</div>
                             <div className="text-xs font-mono text-green-600 font-bold flex items-center gap-1">

@@ -4,27 +4,28 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
+    darkMode: 'class',
     theme: {
         extend: {
             colors: {
-                // "Ergonomic Grayscale" Light Palette
-                'void': '#F2F2F2',      // Soft Off-White Background
-                'surface': '#FFFFFF',   // Pure White for Cards (depth)
-                'surface-highlight': '#E5E7EB', // Soft Gray for Inputs
-                'panel-border': '#1A1A1A', // Carbon border
+                // "Ergonomic Grayscale" Palette using CSS variables
+                'void': 'var(--color-void)',
+                'surface': 'var(--color-surface)',
+                'surface-highlight': 'var(--color-surface-highlight)',
+                'panel-border': 'var(--color-panel-border)',
 
-                // Accents - Carbon Gray
-                'accent': '#1A1A1A',
-                'accent-dim': '#4B5563',
+                // Accents
+                'accent': 'var(--color-accent)',
+                'accent-dim': 'var(--color-accent-dim)',
 
                 // Text
-                'txt-primary': '#1A1A1A',
-                'txt-secondary': '#374151',
-                'txt-dim': '#6B7280',
+                'txt-primary': 'var(--color-txt-primary)',
+                'txt-secondary': 'var(--color-txt-secondary)',
+                'txt-dim': 'var(--color-txt-dim)',
 
                 // Functional
-                'success': '#1A1A1A',
-                'error': '#1A1A1A',
+                'success': 'var(--color-success)',
+                'error': 'var(--color-error)',
             },
             fontFamily: {
                 'sans': ['Inter', 'sans-serif'],
@@ -39,7 +40,7 @@ export default {
                 'xl': '0',
                 '2xl': '0',
                 '3xl': '0',
-                'full': '9999px', // Mantener para elementos circulares (avatares, puntos de estado)
+                'full': '9999px',
             },
             boxShadow: {
                 'flat': 'none',

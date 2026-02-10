@@ -133,7 +133,7 @@ const Ventas = () => {
                 <header className="mb-8 flex-shrink-0">
                     <div className="flex justify-between items-end mb-4">
                         <div>
-                            <h1 className="text-3xl font-sans font-extrabold text-black tracking-tight leading-none mb-1">
+                            <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1">
                                 Punto de Venta
                             </h1>
                             <p className="text-txt-secondary text-sm font-medium">Seleccione productos para agregar al pedido.</p>
@@ -146,12 +146,12 @@ const Ventas = () => {
                     </div>
 
                     {/* Modern Search Bar */}
-                    <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-white">
-                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors">search</span>
+                    <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface">
+                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-txt-primary transition-colors">search</span>
                         <input
                             type="text"
                             placeholder="Buscar producto por nombre..."
-                            className="w-full bg-transparent border-none pl-12 pr-4 py-4 text-black font-medium text-base rounded-xl outline-none placeholder:text-gray-400"
+                            className="w-full bg-transparent border-none pl-12 pr-4 py-4 text-txt-primary font-medium text-base rounded-xl outline-none placeholder:text-txt-dim"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             autoFocus
@@ -159,7 +159,7 @@ const Ventas = () => {
                         {searchTerm && (
                             <button
                                 onClick={() => setSearchTerm('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-100 p-1 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface-highlight p-1 rounded-full text-txt-dim hover:bg-gray-200 transition-colors"
                             >
                                 <span className="material-icons text-sm">close</span>
                             </button>
@@ -187,8 +187,8 @@ const Ventas = () => {
                                                 className={`
                                                     text-left relative p-5 rounded-2xl transition-all duration-200 flex flex-col justify-between h-28
                                                     ${inCart
-                                                        ? 'bg-black text-white shadow-xl scale-[1.02] ring-2 ring-offset-2 ring-black'
-                                                        : 'bg-white text-black hover:shadow-lg border border-gray-100 hover:border-gray-200'}
+                                                        ? 'bg-accent text-white shadow-xl scale-[1.02] ring-2 ring-offset-2 ring-accent'
+                                                        : 'bg-surface text-txt-primary hover:shadow-lg border border-gray-100/10 hover:border-gray-200'}
                                                 `}
                                             >
                                                 <div className="flex justify-between items-start w-full">
@@ -208,7 +208,7 @@ const Ventas = () => {
                                                             Stock: {product.quantity}
                                                         </span>
                                                     </div>
-                                                    <span className={`font-mono font-bold text-sm ${inCart ? 'text-green-400' : 'text-black'}`}>
+                                                    <span className={`font-mono font-bold text-sm ${inCart ? 'text-green-400' : 'text-txt-primary'}`}>
                                                         {formatMoney(product.selling_price)}
                                                     </span>
                                                 </div>
@@ -232,11 +232,11 @@ const Ventas = () => {
 
             {/* Right: Cart/Summary Panel */}
             <div className="lg:col-span-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+                <div className="flex-1 flex flex-col bg-surface rounded-3xl shadow-xl overflow-hidden border border-gray-100/10">
                     {/* Cart Header */}
-                    <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm">
+                    <div className="p-6 bg-surface border-b border-gray-100/10 flex justify-between items-center z-10 shadow-sm">
                         <div>
-                            <h2 className="text-xl font-bold text-black tracking-tight">Pedido Actual</h2>
+                            <h2 className="text-xl font-bold text-txt-primary tracking-tight">Pedido Actual</h2>
                             <p className="text-xs text-gray-400 font-medium mt-0.5">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                         </div>
                         <span className="bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full">
@@ -245,7 +245,7 @@ const Ventas = () => {
                     </div>
 
                     {/* Cart Items List */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4 bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4 bg-surface-highlight/30">
                         {Object.entries(cart).length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
                                 <span className="material-icons text-6xl mb-4 text-gray-200">shopping_bag</span>
@@ -258,14 +258,14 @@ const Ventas = () => {
                                 return (
                                     <div key={id} className="flex items-center gap-4 group">
                                         {/* Qty Controls */}
-                                        <div className="flex flex-col items-center bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden w-8">
+                                        <div className="flex flex-col items-center bg-surface rounded-lg shadow-sm border border-gray-100/10 overflow-hidden w-8">
                                             <button
                                                 onClick={() => updateCart(product.id, qty + 1)}
-                                                className="w-8 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
+                                                className="w-8 h-7 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors"
                                             >
                                                 <span className="material-icons text-[10px]">keyboard_arrow_up</span>
                                             </button>
-                                            <div className="text-xs font-bold font-mono text-black py-0.5">{qty}</div>
+                                            <div className="text-xs font-bold font-mono text-txt-primary py-0.5">{qty}</div>
                                             <button
                                                 onClick={() => updateCart(product.id, qty - 1)}
                                                 className="w-8 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
@@ -275,7 +275,7 @@ const Ventas = () => {
                                         </div>
 
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-black text-sm font-bold truncate">{product.name}</div>
+                                            <div className="text-txt-primary text-sm font-bold truncate">{product.name}</div>
                                             <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
                                                 <span className="font-mono">{formatMoney(product.selling_price)}</span>
                                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -296,11 +296,11 @@ const Ventas = () => {
                     </div>
 
                     {/* Cart Footer & Totals */}
-                    <div className="p-6 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] space-y-6 z-20">
+                    <div className="p-6 bg-surface border-t border-gray-100/10 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] space-y-6 z-20">
                         <div className="space-y-1">
                             <div className="flex justify-between items-end">
-                                <span className="text-sm font-bold text-gray-500 mb-1">Total a Pagar</span>
-                                <span className="text-4xl font-mono font-black text-black tracking-tight">
+                                <span className="text-sm font-bold text-txt-dim mb-1">Total a Pagar</span>
+                                <span className="text-4xl font-mono font-black text-txt-primary tracking-tight">
                                     {formatMoney(calculateTotal())}
                                 </span>
                             </div>
@@ -310,7 +310,7 @@ const Ventas = () => {
                             <div className="relative">
                                 <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">person</span>
                                 <input
-                                    className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-200 rounded-xl py-3 pl-9 pr-4 text-black text-sm outline-none transition-all placeholder:text-gray-400 font-medium"
+                                    className="w-full bg-surface-highlight border border-transparent focus:bg-surface focus:border-gray-200 rounded-xl py-3 pl-9 pr-4 text-txt-primary text-sm outline-none transition-all placeholder:text-txt-dim font-medium"
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}
                                     placeholder="Cliente / Nota (Opcional)"

@@ -12,27 +12,27 @@ const Modal = ({ isOpen, onClose, children, title, className = "", showCloseButt
                 onClick={onClose}
             ></div>
 
-            {/* Modal Content - Pure White & Black Text */}
-            <div className={`relative bg-white w-full max-w-lg border border-panel-border p-8 overflow-hidden rounded-xl shadow-2xl ${className}`}>
+            {/* Modal Content - Surface & Primary Text */}
+            <div className={`relative bg-surface w-full max-w-lg border border-panel-border p-8 overflow-hidden rounded-xl shadow-2xl ${className}`}>
                 {/* Close Button */}
                 {showCloseButton && (
                     <button
                         onClick={onClose}
-                        className="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors"
+                        className="absolute top-6 right-6 text-txt-dim hover:text-txt-primary transition-colors"
                     >
                         <span className="material-icons">close</span>
                     </button>
                 )}
 
                 {title && (
-                    <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
-                        <h3 className="text-xl font-sans font-extrabold text-black uppercase tracking-tight">
+                    <div className="flex items-center justify-between mb-8 border-b border-gray-100/10 pb-4">
+                        <h3 className="text-xl font-sans font-extrabold text-txt-primary uppercase tracking-tight">
                             {title}
                         </h3>
                     </div>
                 )}
 
-                <div className="text-black font-medium">
+                <div className="text-txt-primary font-medium">
                     {children}
                 </div>
             </div>

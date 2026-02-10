@@ -11,7 +11,7 @@ const StatusBadge = ({ status, type = 'default' }) => {
         colorClass = "bg-black text-white border-black"; // Active
         icon = "check_circle";
     } else if (s.includes('pending') || s.includes('warning') || s.includes('late')) {
-        colorClass = "bg-transparent text-black border-2 border-black font-bold"; // Attention
+        colorClass = "bg-transparent text-txt-primary border-2 border-txt-primary font-bold"; // Attention
         icon = "schedule";
     } else if (s.includes('error') || s.includes('cancelled') || s.includes('absent') || s.includes('deleted') || s.includes('depleted') || s.includes('agotado')) {
         colorClass = "bg-transparent text-txt-dim border-2 border-panel-border line-through opacity-40"; // Alert
