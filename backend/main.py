@@ -55,13 +55,17 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 # Helper for Activity Logging
-def log_movement(category: str, action: str, description: str, metadata: dict = {}):
+def log_movement(category: str, action: str, description: str, metadata: dict = {}, 
+                 product_id: int = None, tx_id: int = None, sale_id: int = None):
     try:
         data = {
             "category": category,
             "action": action,
             "description": description,
-            "metadata": metadata
+            "metadata": metadata,
+            "stock_item_id": product_id,
+            "transaction_id": tx_id,
+            "sale_id": sale_id
         }
         supabase.table("app_movements").insert(data).execute()
     except Exception as e:
@@ -180,7 +184,7 @@ def create_stock_item(item: schemas.StockItemCreate):
     if not stock_res.data:
         raise HTTPException(status_code=400, detail="Failed to create stock item")
     
-    log_movement("STOCK", "ALTA", f"Ingreso: {item.name}", {"id": stock_res.data[0]["id"]})
+    log_movement("STOCK", "ALTA", f"Ingreso: {item.name}", {"id": stock_res.data[0]["id"]}, product_id=stock_res.data[0]["id"], tx_id=purchase_tx_id)
     return stock_res.data[0]
 
 @app.post("/stock/batch")
@@ -235,7 +239,8 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             log_movement(
                 "STOCK", "REPOSICION", 
                 f"Reposición: {existing['name']} (+{add_qty} unidades)",
-                {"product_id": item.item_id, "added": add_qty}
+                {"product_id": item.item_id, "added": add_qty},
+                product_id=item.item_id
             )
             processed.append({"id": item.item_id, "name": existing["name"], "status": "replenished"})
             
@@ -278,7 +283,9 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
                 log_movement(
                     "STOCK", "ALTA", 
                     f"Ingreso (Batch): {item.name} ({total_initial} unidades)",
-                    {"product_id": new_item_id, "qty": total_initial}
+                    {"product_id": new_item_id, "qty": total_initial},
+                    product_id=new_item_id,
+                    tx_id=purchase_tx_id
                 )
                 processed.append({"id": new_item_id, "name": item.name, "status": "created"})
 
@@ -391,7 +398,8 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
     log_movement(
         "VENTA", "VENTA_LOTE", 
         f"Venta realizada: {batch.description} - Total: ${total_sale_amount:,.2f}",
-        {"total": total_sale_amount, "items_count": len(batch.items)}
+        {"total": total_sale_amount, "items_count": len(batch.items)},
+        tx_id=main_tx_id
     )
         
     return {"status": "success", "total": total_sale_amount}

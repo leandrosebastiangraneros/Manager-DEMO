@@ -46,8 +46,9 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
 
             {/* Mobile Header (Flat & Simple) */}
             <div className="md:hidden fixed top-0 w-full bg-surface z-40 px-4 py-3 flex justify-between items-center border-b border-panel-border">
-                <div className="font-display font-bold tracking-tighter text-lg uppercase">
+                <div className="font-display font-bold tracking-tighter text-lg uppercase flex items-center gap-2">
                     GEST<span className="text-txt-primary/50">OR</span>
+                    <span className="text-[8px] bg-accent/20 text-accent px-1 rounded">v1.1</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <ThemeToggle />

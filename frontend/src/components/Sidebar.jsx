@@ -30,7 +30,10 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                     `}>
                         <span className="material-icons text-txt-primary text-2xl">grid_view</span>
                         {!isCollapsed && (
-                            <span className="ml-3 font-sans font-extrabold tracking-tight text-txt-primary text-xl">GESTOR</span>
+                            <div className="ml-3 font-display font-bold tracking-tighter text-lg uppercase flex items-center gap-2">
+                                GEST<span className="text-txt-primary/50">OR</span>
+                                <span className="text-[8px] bg-accent/20 text-accent px-1 rounded">v1.1</span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -62,6 +65,11 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-panel-border mt-auto">
+                    {!isCollapsed && (
+                        <div className="px-4 py-1 text-[8px] font-mono text-txt-dim uppercase opacity-40 mb-1">
+                            Build v1.1-MultiFormat
+                        </div>
+                    )}
                     <button
                         onClick={toggleCollapse}
                         className="w-full flex items-center gap-4 p-4 text-txt-primary hover:text-txt-primary hover:bg-surface-highlight/10 transition-all group"
