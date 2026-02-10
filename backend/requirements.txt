@@ -1,8 +1,10 @@
+supabase
 fastapi
 uvicorn
-sqlalchemy
-reportlab
 python-multipart
 python-dotenv
-gunicorn
+reportlab
+# Legacy (to be removed)
+sqlalchemy
 psycopg2-binary
+gunicorn

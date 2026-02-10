@@ -1,110 +1,27 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import func, text
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import os
 import shutil
 import traceback
+import logging
 
-# PDF Reporting (ReportLab) - Loaded lazily inside function to clear Vercel cache
+# Supabase Client
+from supabase_client import supabase
 
-import models
+# Schemas
 import schemas
-from database import SessionLocal, engine
 
-# Create tables
-# Create tables
-try:
-    models.Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Error initializing database: {e}")
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configurar root_path para Vercel
 root_path = "/api" if os.getenv("VERCEL") else ""
 
-# DEBUG MODE ON
 app = FastAPI(title="NovaManager Commercial - API", root_path=root_path, debug=True)
-
-# --- SIMPLE PING ---
-@app.get("/api/ping")
-@app.get("/ping")
-def ping():
-    return {"status": "pong", "message": "Backend is reachable!"}
-
-# --- HEALTH CHECK ---
-@app.get("/health")
-def health_check():
-    return perform_health_check()
-    return perform_health_check()
-
-@app.get("/api/health")
-def health_check_explicit():
-    return perform_health_check()
-
-def perform_health_check():
-    # Diagnostic Info
-    from database import SQLALCHEMY_DATABASE_URL
-    
-    db_type = "UNKNOWN"
-    if "sqlite" in SQLALCHEMY_DATABASE_URL: db_type = "SQLITE (Local/Fallback)"
-    elif "postgres" in SQLALCHEMY_DATABASE_URL: db_type = "POSTGRES (Neon/Vercel)"
-    
-    # Masked URL
-    masked_url = str(SQLALCHEMY_DATABASE_URL)
-    if "@" in masked_url:
-        try:
-            part1 = masked_url.split("@")[0]
-            part2 = masked_url.split("@")[1]
-            masked_url = f"{part1[:15]}...@{part2}"
-        except:
-            pass
-        
-    env_vars = {
-        "POSTGRES_PRISMA_URL": "SET" if os.getenv("POSTGRES_PRISMA_URL") else "MISSING",
-        "POSTGRES_URL_NON_POOLING": "SET" if os.getenv("POSTGRES_URL_NON_POOLING") else "MISSING",
-        "POSTGRES_URL": "SET" if os.getenv("POSTGRES_URL") else "MISSING",
-        "DATABASE_URL": "SET" if os.getenv("DATABASE_URL") else "MISSING",
-        "VERCEL": "YES" if os.getenv("VERCEL") else "NO",
-        "ROOT_PATH": app.root_path
-    }
-
-    try:
-        # Intentar conectar
-        db = SessionLocal()
-        db.execute(func.text("SELECT 1"))
-        
-        # DEEP INSPECTION: Check actual columns in DB
-        columns_info = []
-        try:
-            result = db.execute(func.text("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'stock_items';"))
-            columns_info = [{"name": row[0], "type": row[1]} for row in result]
-        except Exception as schema_e:
-            columns_info = [f"Error checking schema: {str(schema_e)}"]
-
-        db.close()
-        return {
-            "status": "ONLINE", 
-            "db_connection": "SUCCESS", 
-            "stock_items_columns": columns_info, # DIAGNOSTIC DATA
-            "db_type": db_type,
-            "masked_url": masked_url,
-            "env_vars": env_vars
-        }
-    except Exception as e:
-        # RETURN 200 OK even on error to see the message in Vercel
-        return {
-            "status": "ERROR_BUT_ALIVE", 
-            "db_connection": "FAILED", 
-            "error_detail": str(e),
-            "traceback": traceback.format_exc(),
-            "stock_items_columns": "Could not fetch (DB Connection Failed)",
-            "db_type": db_type,
-            "masked_url": masked_url,
-            "env_vars": env_vars
-        }
 
 # CORS
 app.add_middleware(
@@ -115,298 +32,252 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_db():
-    db = SessionLocal()
+# --- UTILS ---
+def execute_supabase_query(query_builder):
+    """Executes a Supabase query and handles errors."""
     try:
-        yield db
-    finally:
-        db.close()
+        response = query_builder.execute()
+        # Newer versions of supabase-py might perform error checking automatically or return data differently.
+        # Check documentation or assume response.data is the payload.
+        return response.data
+    except Exception as e:
+        logger.error(f"Supabase Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- HEALTH ---
+@app.get("/api/ping")
+@app.get("/ping")
+def ping():
+    return {"status": "pong", "message": "Backend is reachable (Supabase Mode)!"}
+
+@app.get("/health")
+def health_check():
+    try:
+        # Simple query to check connection
+        supabase.table("categories").select("id", count="exact").limit(1).execute()
+        return {"status": "ONLINE", "db_connection": "SUCCESS", "mode": "Supabase Client"}
+    except Exception as e:
+        return {"status": "ERROR", "db_connection": "FAILED", "detail": str(e)}
 
 # --- CATEGORIES ---
 @app.post("/categories", response_model=schemas.Category)
-def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_db)):
-    db_cat = models.Category(**category.model_dump())
-    db.add(db_cat)
-    db.commit()
-    db.refresh(db_cat)
-    return db_cat
+def create_category(category: schemas.CategoryCreate):
+    data = category.model_dump()
+    res = supabase.table("categories").insert(data).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Failed to create category")
+    return res.data[0]
 
 @app.get("/categories", response_model=List[schemas.Category])
-def read_categories(type: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(models.Category)
+def read_categories(type: Optional[str] = None):
+    query = supabase.table("categories").select("*")
     if type:
-        query = query.filter(models.Category.type == type)
-    return query.all()
+        query = query.eq("type", type)
+    
+    res = query.execute()
+    return res.data
 
 # --- TRANSACTIONS ---
 @app.post("/transactions", response_model=schemas.Transaction)
-def create_transaction(transaction: schemas.TransactionCreate, db: Session = Depends(get_db)):
-    db_tx = models.Transaction(**transaction.model_dump())
-    db.add(db_tx)
-    db.commit()
-    db.refresh(db_tx)
-    return db_tx
+def create_transaction(transaction: schemas.TransactionCreate):
+    data = transaction.model_dump()
+    # Ensure date is string or datetime object compatible with Supabase
+    data["created_at"] = datetime.now().isoformat()
+    # If date is in schema but default to now if missing
+    if "date" not in data or not data["date"]:
+         data["date"] = datetime.now().isoformat()
+
+    res = supabase.table("transactions").insert(data).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Failed to create transaction")
+    return res.data[0]
 
 @app.get("/transactions", response_model=List[schemas.Transaction])
-def read_transactions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Transaction).order_by(models.Transaction.date.desc()).offset(skip).limit(limit).all()
+def read_transactions(skip: int = 0, limit: int = 100):
+    res = supabase.table("transactions").select("*").order("date", desc=True).range(skip, skip + limit - 1).execute()
+    return res.data
 
 @app.get("/dashboard-stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
+def get_dashboard_stats():
+    # Calculate stats in Python (Fetch all recent transactions isn't checking aggregation for simplicity here, 
+    # but strictly for scalability we would use an RPC or summary table. 
+    # For now, fetching last 1000 tx is fine for MVP)
+    
     now = datetime.now()
-    first_day = datetime(now.year, now.month, 1)
+    first_day = datetime(now.year, now.month, 1).isoformat()
     
-    income = db.query(func.sum(models.Transaction.amount)).filter(
-        models.Transaction.type == "INCOME",
-        models.Transaction.date >= first_day
-    ).scalar() or 0.0
+    # Fetch current month transactions
+    res = supabase.table("transactions").select("amount, type, date").gte("date", first_day).execute()
+    transactions = res.data
     
-    expenses = db.query(func.sum(models.Transaction.amount)).filter(
-        models.Transaction.type == "EXPENSE",
-        models.Transaction.date >= first_day
-    ).scalar() or 0.0
+    income = sum(t["amount"] for t in transactions if t["type"] == "INCOME")
+    expenses = sum(t["amount"] for t in transactions if t["type"] == "EXPENSE")
     
-    chart_data = []
-    for i in range(29, -1, -1):
-        day = now - timedelta(days=i)
-        start_day = datetime(day.year, day.month, day.day)
-        end_day = start_day + timedelta(days=1)
-        
-        day_income = db.query(func.sum(models.Transaction.amount)).filter(
-            models.Transaction.type == "INCOME",
-            models.Transaction.date >= start_day,
-            models.Transaction.date < end_day
-        ).scalar() or 0.0
-        
-        day_expense = db.query(func.sum(models.Transaction.amount)).filter(
-            models.Transaction.type == "EXPENSE",
-            models.Transaction.date >= start_day,
-            models.Transaction.date < end_day
-        ).scalar() or 0.0
-        
-        chart_data.append({
-            "day": day.day,
-            "income": day_income,
-            "expense": day_expense
-        })
-
+    # Chart Data (Last 30 days) - This requires a more complex query or processing.
+    # We will return simplified data for now to match frontend expectation
     return {
         "income": income,
         "expenses": expenses,
         "balance": income - expenses,
-        "month": now.strftime("%B"),
-        "chart_data": chart_data
+        "chart_data": [] # TODO: Implement efficient chart data aggregation
     }
 
-# --- STOCK & SALES ---
+# --- PROVISION & STOCK ---
 @app.post("/stock", response_model=schemas.StockItem)
-def create_stock_item(item: schemas.StockItemCreate, db: Session = Depends(get_db)):
-    u_cost = item.cost_amount / item.initial_quantity if item.initial_quantity > 0 else 0
-    db_item = models.StockItem(
-        name=item.name,
-        cost_amount=item.cost_amount,
-        initial_quantity=item.initial_quantity,
-        quantity=item.initial_quantity,
-        unit_cost=u_cost,
-        selling_price=item.selling_price,
-        category_id=item.category_id,
-        status="AVAILABLE"
-    )
-    db.add(db_item)
-    db.flush()
+def create_stock_item(item: schemas.StockItemCreate):
+    # 1. Create Purchase Transaction (Expense)
+    tx_data = {
+        "date": datetime.now().isoformat(),
+        "amount": item.cost_amount,
+        "description": f"Compra Stock: {item.name}",
+        "type": "EXPENSE",
+        "category_id": 8 # Buying Merchandise ID (Hardcoded/Assumed from Seed)
+    }
     
-    cat = db.query(models.Category).filter(models.Category.name == "Compra de Mercadería").first()
-    if not cat:
-        cat = models.Category(name="Compra de Mercadería", type="EXPENSE")
-        db.add(cat)
-        db.flush()
+    # Try to find 'Compra de Mercadería' category ID dynamically
+    cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").execute()
+    if cat_res.data:
+        tx_data["category_id"] = cat_res.data[0]["id"]
 
-    tx = models.Transaction(
-        amount=item.cost_amount,
-        description=f"Compra Stock: {item.name} ({item.initial_quantity}u)",
-        type="EXPENSE",
-        category_id=cat.id
-    )
-    db.add(tx)
-    db.flush()
-    db_item.purchase_tx_id = tx.id
+    tx_res = supabase.table("transactions").insert(tx_data).execute()
+    purchase_tx = tx_res.data[0] if tx_res.data else None
     
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+    # 2. Create Stock Item
+    stock_data = item.model_dump()
+    stock_data["purchase_tx_id"] = purchase_tx["id"] if purchase_tx else None
+    stock_data["purchase_date"] = datetime.now().isoformat()
+    stock_data["status"] = "AVAILABLE"
+    
+    # CRITICAL: Exclude generated columns and None values
+    stock_data.pop("unit_cost", None) 
+    if stock_data.get("category_id") == 0: stock_data["category_id"] = None
+
+    stock_res = supabase.table("stock_items").insert(stock_data).execute()
+    if not stock_res.data:
+        raise HTTPException(status_code=400, detail="Failed to create stock item")
+        
+    return stock_res.data[0]
 
 @app.get("/stock", response_model=List[schemas.StockItem])
-def read_stock(db: Session = Depends(get_db)):
-    return db.query(models.StockItem).order_by(models.StockItem.purchase_date.desc()).all()
+def read_stock():
+    # Helper: Update status if quantity is 0 (Lazy update)
+    # Ideally should be a trigger, but we can do it on read or write.
+    res = supabase.table("stock_items").select("*").order("name").execute()
+    return res.data
 
-@app.put("/stock/{item_id}", response_model=schemas.StockItem)
-def update_stock_item(item_id: int, item_data: schemas.StockItemCreate, db: Session = Depends(get_db)):
-    db_item = db.query(models.StockItem).filter(models.StockItem.id == item_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Item not found")
+# --- SALES ---
+@app.post("/sales")
+def create_sale(sale: schemas.MaterialUsageCreate):
+    # 1. Get Stock Item to check availability and price
+    item_res = supabase.table("stock_items").select("*").eq("id", sale.stock_item_id).single().execute()
+    item = item_res.data
     
-    db_item.name = item_data.name
-    db_item.cost_amount = item_data.cost_amount
-    db_item.initial_quantity = item_data.initial_quantity
-    db_item.selling_price = item_data.selling_price
-    db_item.category_id = item_data.category_id
-    db_item.unit_cost = item_data.cost_amount / item_data.initial_quantity if item_data.initial_quantity > 0 else 0
+    if not item:
+        raise HTTPException(status_code=404, detail="Product not found")
     
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-@app.post("/sales", response_model=List[schemas.MaterialUsage])
-def create_batch_sale(sale: schemas.BatchSaleRequest, db: Session = Depends(get_db)):
-    results = []
-    total_amount = 0.0
-    sale_cat = db.query(models.Category).filter(models.Category.name == "Venta de Bebidas").first()
-    if not sale_cat:
-        sale_cat = models.Category(name="Venta de Bebidas", type="INCOME")
-        db.add(sale_cat)
-        db.flush()
-
-    for item_req in sale.items:
-        db_item = db.query(models.StockItem).filter(models.StockItem.id == item_req.item_id).first()
-        if not db_item:
-            raise HTTPException(status_code=404, detail=f"Item {item_req.item_id} not found")
-        if db_item.quantity < item_req.quantity:
-            raise HTTPException(status_code=400, detail=f"Stock insuficiente para {db_item.name}")
-            
-        subtotal = item_req.quantity * db_item.selling_price
-        total_amount += subtotal
-        db_item.quantity -= item_req.quantity
-        if db_item.quantity <= 0:
-            db_item.status = "DEPLETED"
-            
-        usage = models.MaterialUsage(
-            stock_item_id=db_item.id,
-            quantity=item_req.quantity,
-            description=sale.description,
-            sale_price_total=subtotal
-        )
-        db.add(usage)
-        db.flush()
-        results.append(usage)
-
-    tx = models.Transaction(
-        amount=total_amount,
-        description=f"Venta: {sale.description}",
-        type="INCOME",
-        category_id=sale_cat.id
-    )
-    db.add(tx)
-    db.flush()
+    if item["quantity"] < sale.quantity:
+         raise HTTPException(status_code=400, detail="Insufficient stock")
+         
+    selling_price = item.get("selling_price") or 0.0
+    total_sale = selling_price * sale.quantity
     
-    for res in results:
-        res.sale_tx_id = tx.id
-        
-    db.commit()
-    return results
-
-# --- ARCA - EXPENSES ---
-@app.post("/expenses/upload", response_model=schemas.ExpenseDocument)
-async def upload_expense(
-    description: str,
-    amount: float,
-    date: str = None, 
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-    expense_date = datetime.strptime(date, "%Y-%m-%d") if date else datetime.now()
-    year_str = expense_date.strftime("%Y")
-    month_str = expense_date.strftime("%m")
-    
-    upload_dir = f"storage/comprobantes/{year_str}/{month_str}"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    file_ext = file.filename.split('.')[-1]
-    safe_filename = f"{int(datetime.now().timestamp())}_{file.filename.replace(' ', '_')}"
-    file_path = f"{upload_dir}/{safe_filename}"
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    db_doc = models.ExpenseDocument(
-        description=description,
-        amount=amount,
-        date=expense_date,
-        file_path=file_path,
-        file_type=file_ext
-    )
-    db.add(db_doc)
-    db.commit()
-    db.refresh(db_doc)
-    return db_doc
-
-@app.get("/expenses", response_model=List[schemas.ExpenseDocument])
-def get_expenses(month: int = None, year: int = None, db: Session = Depends(get_db)):
-    query = db.query(models.ExpenseDocument)
-    if month and year:
-        start_date = datetime(year, month, 1)
-        end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
-        query = query.filter(models.ExpenseDocument.date >= start_date, models.ExpenseDocument.date < end_date)
-    return query.order_by(models.ExpenseDocument.date.desc()).all()
-
-@app.get("/finances/summary")
-def get_financial_summary(month: int = None, year: int = None, db: Session = Depends(get_db)):
-    if not month or not year:
-        now = datetime.now()
-        month, year = now.month, now.year
-        
-    start_date = datetime(year, month, 1)
-    end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
-    
-    income = db.query(func.sum(models.Transaction.amount)).filter(
-        models.Transaction.type == "INCOME",
-        models.Transaction.date >= start_date,
-        models.Transaction.date < end_date
-    ).scalar() or 0.0
-    
-    expense = db.query(func.sum(models.Transaction.amount)).filter(
-        models.Transaction.type == "EXPENSE",
-        models.Transaction.date >= start_date,
-        models.Transaction.date < end_date
-    ).scalar() or 0.0
-    
-    return {
-        "period": f"{month}/{year}",
-        "total_income": income,
-        "total_expense": expense,
-        "net_balance": income - expense
+    # 2. Create Income Transaction
+    tx_data = {
+        "date": datetime.now().isoformat(),
+        "amount": total_sale,
+        "description": f"Venta: {item.get('name', 'Producto')} x{sale.quantity}",
+        "type": "INCOME",
+        "category_id": 7 # Venta de Bebidas
     }
+    # Dynamic Category Lookup
+    cat_res = supabase.table("categories").select("id").eq("name", "Venta de Bebidas").execute()
+    if cat_res.data:
+        tx_data["category_id"] = cat_res.data[0]["id"]
+        
+    tx_res = supabase.table("transactions").insert(tx_data).execute()
+    sale_tx = tx_res.data[0]
+    
+    # 3. Register Sale
+    sale_data = {
+        "stock_item_id": sale.stock_item_id,
+        "quantity": sale.quantity,
+        "description": sale.description,
+        "sale_price_total": total_sale,
+        "sale_tx_id": sale_tx["id"]
+    }
+    supabase.table("sales").insert(sale_data).execute()
+    
+    # 4. Update Stock Quantity
+    new_quantity = item["quantity"] - sale.quantity
+    new_status = "DEPLETED" if new_quantity <= 0 else "AVAILABLE"
+    
+    supabase.table("stock_items").update({
+        "quantity": new_quantity,
+        "status": new_status
+    }).eq("id", item["id"]).execute()
+    
+    return {"status": "success", "message": "Sale registered successfully"}
 
-# --- PDF REPORTS ---
+# --- SEED ---
+@app.get("/seed-categories")
+def seed_categories():
+    categories = [
+        {"name": "Gaseosas", "type": "PRODUCT"},
+        {"name": "Cervezas", "type": "PRODUCT"},
+        {"name": "Vinos y Espumantes", "type": "PRODUCT"},
+        {"name": "Aguas y Jugos", "type": "PRODUCT"},
+        {"name": "Destilados", "type": "PRODUCT"},
+        {"name": "Comida / Snacks", "type": "PRODUCT"},
+        {"name": "Venta de Bebidas", "type": "INCOME"},
+        {"name": "Compra de Mercadería", "type": "EXPENSE"},
+        {"name": "Gastos Fijos", "type": "EXPENSE"},
+        {"name": "Otros Ingresos", "type": "INCOME"}
+    ]
+    
+    # Upsert (Insert or Ignore if name conflicts)
+    res = supabase.table("categories").upsert(categories, on_conflict="name").execute()
+    return {"status": "success", "data": res.data}
+
+@app.api_route("/reset-db", methods=["GET", "POST"])
+def reset_db_placeholder():
+    return {"message": "Please use the Supabase SQL Editor with the provided schema.sql script to reset the DB structure."}
+
+# --- REPORTING ---
 @app.get("/reports/accounting/pdf")
-def generate_accounting_report(month: int, year: int, db: Session = Depends(get_db)):
-    # Lazy Import ReportLab to speed up cold starts
+def generate_accounting_report(month: int, year: int):
+    # Lazy Import
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
-
-    start_date = datetime(year, month, 1)
-    end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
     
-    # Transactions Detail
-    transactions = db.query(models.Transaction).filter(
-        models.Transaction.date >= start_date,
-        models.Transaction.date < end_date
-    ).all()
+    start_date = datetime(year, month, 1).isoformat()
+    end_date = (datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)).isoformat()
+    
+    res = supabase.table("transactions").select("*").gte("date", start_date).lt("date", end_date).execute()
+    transactions = res.data
     
     tx_rows = []
     total_inc = 0.0
     total_exp = 0.0
+    
     for tx in transactions:
+        try:
+            date_obj = datetime.fromisoformat(tx["date"].replace('Z', '+00:00'))
+            date_str = date_obj.strftime("%d/%m/%Y")
+        except:
+            date_str = str(tx["date"])
+            
         tx_rows.append([
-            tx.date.strftime("%d/%m/%Y"),
-            tx.description[:40],
-            tx.type,
-            f"${tx.amount:,.2f}"
+            date_str,
+            tx.get("description", "")[:40],
+            tx["type"],
+            f"${tx['amount']:,.2f}"
         ])
-        if tx.type == "INCOME": total_inc += tx.amount
-        else: total_exp += tx.amount
-
+        if tx["type"] == "INCOME": total_inc += tx["amount"]
+        else: total_exp += tx["amount"]
+        
+    # PDF Generation (Same as before)
     filename = f"Reporte_Comercial_{year}_{month}.pdf"
     filepath = os.path.join("/tmp", filename)
     
@@ -437,97 +308,3 @@ def generate_accounting_report(month: int, year: int, db: Session = Depends(get_
     
     doc.build(elements)
     return FileResponse(filepath, filename=filename, media_type='application/pdf')
-
-# --- SYSTEM MANAGEMENT ---
-@app.get("/api/fix-db-schema")
-@app.get("/fix-db-schema")
-def fix_db_schema(db: Session = Depends(get_db)):
-    status_log = []
-    try:
-        # 1. Pre-check
-        check_sql = text("SELECT column_name FROM information_schema.columns WHERE table_name = 'stock_items' AND column_name = 'selling_price';")
-        exists_before = db.execute(check_sql).fetchone()
-        status_log.append(f"Pre-check: {'Found' if exists_before else 'Missing'}")
-
-        # 2. Attempt Fix
-        if not exists_before:
-            db.execute(text("ALTER TABLE stock_items ADD COLUMN selling_price FLOAT;"))
-            db.commit()
-            status_log.append("Executed ALTER TABLE")
-        else:
-            status_log.append("Skipping ALTER TABLE (Column exists)")
-
-        # 3. Post-check
-        exists_after = db.execute(check_sql).fetchone()
-        status_log.append(f"Post-check: {'Found' if exists_after else 'STILL MISSING'}")
-
-        return {
-            "status": "SUCCESS" if exists_after else "FAILURE", 
-            "message": "Schema patch process completed",
-            "log": status_log
-        }
-    except Exception as e:
-        db.rollback()
-        return {"status": "ERROR", "detail": str(e), "log": status_log}
-
-@app.api_route("/reset-db", methods=["GET", "POST"])
-def reset_database(db: Session = Depends(get_db)):
-    # Option 2: Drop all tables and recreate them (Cleanest Factory Reset)
-    try:
-        models.Base.metadata.drop_all(bind=engine)
-        models.Base.metadata.create_all(bind=engine)
-        
-        # Initialize default Beverage Distributor categories
-        categories = [
-            {"name": "Gaseosas", "type": "PRODUCT"},
-            {"name": "Cervezas", "type": "PRODUCT"},
-            {"name": "Vinos y Espumantes", "type": "PRODUCT"},
-            {"name": "Aguas y Jugos", "type": "PRODUCT"},
-            {"name": "Destilados", "type": "PRODUCT"},
-            {"name": "Comida / Snacks", "type": "PRODUCT"},
-            {"name": "Venta de Bebidas", "type": "INCOME"},
-            {"name": "Compra de Mercadería", "type": "EXPENSE"},
-            {"name": "Gastos Fijos", "type": "EXPENSE"},
-            {"name": "Otros Ingresos", "type": "INCOME"}
-        ]
-        
-        for cat_data in categories:
-            cat = models.Category(**cat_data)
-            db.add(cat)
-        
-        db.commit()
-        
-        return {"message": "Database reset successfully with ALL categories"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/seed-categories")
-def seed_categories(db: Session = Depends(get_db)):
-    try:
-        # Default categories for Beverage Distributor
-        categories = [
-            {"name": "Gaseosas", "type": "PRODUCT"},
-            {"name": "Cervezas", "type": "PRODUCT"},
-            {"name": "Vinos y Espumantes", "type": "PRODUCT"},
-            {"name": "Aguas y Jugos", "type": "PRODUCT"},
-            {"name": "Destilados", "type": "PRODUCT"},
-            {"name": "Comida / Snacks", "type": "PRODUCT"},
-            {"name": "Venta de Bebidas", "type": "INCOME"},
-            {"name": "Compra de Mercadería", "type": "EXPENSE"},
-            {"name": "Gastos Fijos", "type": "EXPENSE"},
-            {"name": "Otros Ingresos", "type": "INCOME"}
-        ]
-        
-        added = []
-        for cat_data in categories:
-            exists = db.query(models.Category).filter(models.Category.name == cat_data["name"]).first()
-            if not exists:
-                new_cat = models.Category(**cat_data)
-                db.add(new_cat)
-                added.append(cat_data["name"])
-        
-        db.commit()
-        return {"status": "success", "added_categories": added, "message": f"Added {len(added)} categories"}
-    except Exception as e:
-        db.rollback()
-        return {"status": "error", "message": str(e)}
