@@ -232,17 +232,22 @@ const Stock = () => {
         e.preventDefault();
         try {
             const existingItem = items.find(i => i.id === editingId);
+            if (!existingItem) {
+                showAlert("Error: No se encontró el producto original", "error");
+                return;
+            }
+
             const payload = {
                 name: newItemName,
                 brand: newItemBrand,
                 is_pack: isPack,
-                pack_size: parseFloat(packSize),
-                cost_amount: parseFloat(newItemCost) * (existingItem ? existingItem.initial_quantity : (isPack ? parseFloat(newItemQuantity) * parseFloat(packSize) : parseFloat(newItemQuantity))),
-                initial_quantity: existingItem ? existingItem.initial_quantity : (isPack ? parseFloat(newItemQuantity) * parseFloat(packSize) : parseFloat(newItemQuantity)),
-                selling_price: parseFloat(newItemSellingPrice),
+                pack_size: parseFloat(packSize) || 1,
+                cost_amount: parseFloat(newItemCost) * existingItem.initial_quantity,
+                initial_quantity: existingItem.initial_quantity,
+                selling_price: parseFloat(newItemSellingPrice) || 0,
                 pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
                 category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null,
-                min_stock_alert: parseFloat(minStockAlert)
+                min_stock_alert: parseFloat(minStockAlert) || 5
             };
 
             const res = await fetch(`${API_URL}/stock/${editingId}`, {
@@ -255,10 +260,14 @@ const Stock = () => {
                 showAlert("Producto actualizado con éxito", "success");
                 setIsAddModalOpen(false);
                 fetchStock();
+            } else {
+                const errorData = await res.json();
+                console.error("Error en update:", errorData);
+                showAlert(`Error: ${errorData.detail || 'No se pudo actualizar'}`, "error");
             }
         } catch (err) {
-            console.error(err);
-            showAlert("Error al actualizar producto", "error");
+            console.error("Catch logic:", err);
+            showAlert("Error crítico al actualizar producto", "error");
         }
     };
 
@@ -603,12 +612,21 @@ const Stock = () => {
                                             <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost * (item.pack_size || 1))}</td>
                                             <td className="p-4 text-right font-mono font-bold text-xs text-green-600">{formatMoney(item.selling_price)}</td>
                                             <td className="p-4 text-right font-mono font-bold text-xs text-blue-600">
-                                                <div className="flex flex-col items-end">
-                                                    <span>{formatMoney(item.pack_price || (item.selling_price * (item.pack_size || 1)))}</span>
-                                                    {(item.formats && item.formats.length > 0) && (
-                                                        <span className="text-[8px] opacity-70 bg-blue-50 px-1 rounded mt-1">
-                                                            +{item.formats.length} formatos
-                                                        </span>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter opacity-50">Principal</span>
+                                                        <span>{formatMoney(item.pack_price || (item.selling_price * (item.pack_size || 1)))}</span>
+                                                    </div>
+
+                                                    {item.formats && item.formats.length > 0 && (
+                                                        <div className="mt-1 space-y-1 border-t border-blue-100/30 pt-1 w-full flex flex-col items-end">
+                                                            {item.formats.map(f => (
+                                                                <div key={f.id} className="flex flex-col items-end">
+                                                                    <span className="text-[8px] text-gray-400 uppercase tracking-tighter">{f.label || `x${f.pack_size}`}</span>
+                                                                    <span className="text-[10px] text-indigo-500">{formatMoney(f.pack_price)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
@@ -643,10 +661,14 @@ const Stock = () => {
                                             </h3>
                                             <div className="flex gap-2 text-[9px] font-mono mt-1 flex-wrap">
                                                 <span className="text-green-600 bg-green-50 px-1 rounded">U: {formatMoney(item.selling_price)}</span>
-                                                <span className="text-blue-600 bg-blue-50 px-1 rounded">P: {formatMoney(item.pack_price || (item.selling_price * item.pack_size))}</span>
-                                                {(item.formats && item.formats.length > 0) && (
-                                                    <span className="text-blue-500 bg-blue-100/50 px-1 rounded">+{item.formats.length} formatos</span>
-                                                )}
+                                                <div className="flex flex-col gap-1 w-full mt-1 border-t border-gray-100 pt-1">
+                                                    <span className="text-blue-600 bg-blue-50 px-1 rounded w-fit">P. Principal: {formatMoney(item.pack_price || (item.selling_price * item.pack_size))}</span>
+                                                    {item.formats && item.formats.length > 0 && item.formats.map(f => (
+                                                        <span key={f.id} className="text-indigo-600 bg-indigo-50 px-1 rounded w-fit">
+                                                            P. {f.label || `x${f.pack_size}`}: {formatMoney(f.pack_price)}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                         <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />

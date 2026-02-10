@@ -58,33 +58,31 @@ const Ventas = () => {
         }
     };
 
-    const updateCart = (productId, qty, type = 'unit', formatId = null) => {
+    const updateCart = (productId, newQty, type = 'unit', formatId = null) => {
+        const fId = formatId ? parseInt(formatId) : null;
+        const cartKey = fId ? `${productId}_pack_${fId}` : `${productId}_${type}`;
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
-        const cartKey = formatId ? `${productId}_${type}_${formatId}` : `${productId}_${type}`;
-        const newQty = parseFloat(qty) || 0;
+        newQty = parseFloat(newQty);
 
-        // Stock check
-        // If type is pack and formatId exists, use format's pack_size
         let pSize = product.pack_size || 1;
-        if (type === 'pack' && formatId) {
-            const fmt = product.formats?.find(f => f.id === formatId);
+        if (type === 'pack' && fId) {
+            const fmt = product.formats?.find(f => f.id === fId);
             if (fmt) pSize = fmt.pack_size;
         }
 
         const unitsNeeded = type === 'pack' ? newQty * pSize : newQty;
 
-        // Simplify stock validation: calculate all units for this product in cart
         const totalOtherUnits = Object.entries(cart).reduce((acc, [key, q]) => {
             if (key.startsWith(`${productId}_`) && key !== cartKey) {
                 const parts = key.split('_');
                 const t = parts[1];
-                const fId = parts[2];
+                const formatsIdStr = parts[2];
                 let size = 1;
                 if (t === 'pack') {
-                    if (fId) {
-                        const fmt = product.formats?.find(f => f.id === parseInt(fId));
+                    if (formatsIdStr) {
+                        const fmt = product.formats?.find(f => f.id === parseInt(formatsIdStr));
                         size = fmt ? fmt.pack_size : product.pack_size || 1;
                     } else {
                         size = product.pack_size || 1;
@@ -254,7 +252,7 @@ const Ventas = () => {
                                                 key={product.id}
                                                 className={`
                                                     text-left relative p-0 rounded-2xl transition-all duration-200 flex flex-col justify-between overflow-hidden border border-gray-100/10 hover:border-gray-200 bg-surface group
-                                                    ${(cart[`${product.id}_unit`] > 0 || cart[`${product.id}_pack`] > 0) ? 'ring-2 ring-accent ring-offset-2' : 'hover:shadow-lg'}
+                                                    ${Object.keys(cart).some(key => key.startsWith(`${product.id}_`)) ? 'ring-2 ring-accent ring-offset-2 shadow-lg scale-[1.02]' : 'hover:shadow-lg'}
                                                 `}
                                             >
                                                 {/* Card Header: Name + Badge */}
