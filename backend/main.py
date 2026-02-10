@@ -7,6 +7,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import os
 import shutil
+import traceback
 
 # PDF Reporting (ReportLab)
 from reportlab.lib.pagesizes import A4
@@ -87,10 +88,12 @@ def perform_health_check():
             "env_vars": env_vars
         }
     except Exception as e:
+        # RETURN 200 OK even on error to see the message in Vercel
         return {
-            "status": "ERROR", 
+            "status": "ERROR_BUT_ALIVE", 
             "db_connection": "FAILED", 
             "error_detail": str(e),
+            "traceback": traceback.format_exc(),
             "db_type": db_type,
             "masked_url": masked_url,
             "env_vars": env_vars
