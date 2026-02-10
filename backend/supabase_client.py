@@ -10,7 +10,6 @@ class SupabaseLite:
         self.key = os.environ.get("SUPABASE_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
         
         if not self.url or not self.key:
-            # We don't raise here to allow the app to start, but methods will fail with clear message
             self.initialized = False
         else:
             self.url = self.url.rstrip('/')
@@ -44,6 +43,7 @@ class SupabaseTable:
             def eq(self, col, val):
                 if val is not None: self.params[col] = f"eq.{val}"
                 return self
+                
             def gte(self, col, val): self.params[col] = f"gte.{val}"; return self
             def lt(self, col, val): self.params[col] = f"lt.{val}"; return self
             def order(self, col, desc=True): self.params['order'] = f"{col}.{'desc' if desc else 'asc'}"; return self
@@ -66,45 +66,60 @@ class SupabaseTable:
 
     def insert(self, data: dict):
         class Operation:
-            def execute(self):
-                with httpx.Client() as client:
-                    url = f"{self.client.base_url}/{self.table_name}"
-                    response = client.post(url, headers=self.client.headers, json=data)
-                    if response.status_code >= 400:
-                        raise Exception(f"Supabase POST Error {response.status_code}: {response.text}")
-                    return SupabaseResponse(response, response.json())
-        return Operation()
-
-    def update(self, data: dict):
-        class Operation:
-            def __init__(self, table): self.table = table; self.params = {}
-            def eq(self, col, val): self.params[col] = f"eq.{val}"; return self
+            def __init__(self, table, payload):
+                self.table = table
+                self.payload = payload
             def execute(self):
                 with httpx.Client() as client:
                     url = f"{self.table.client.base_url}/{self.table.table_name}"
-                    response = client.patch(url, headers=self.table.client.headers, json=data, params=self.params)
+                    response = client.post(url, headers=self.table.client.headers, json=self.payload)
+                    if response.status_code >= 400:
+                        raise Exception(f"Supabase POST Error {response.status_code}: {response.text}")
+                    return SupabaseResponse(response, response.json())
+        return Operation(self, data)
+
+    def update(self, data: dict):
+        class Operation:
+            def __init__(self, table, payload):
+                self.table = table
+                self.payload = payload
+                self.params = {}
+
+            def eq(self, col, val): self.params[col] = f"eq.{val}"; return self
+            
+            def execute(self):
+                with httpx.Client() as client:
+                    url = f"{self.table.client.base_url}/{self.table.table_name}"
+                    response = client.patch(url, headers=self.table.client.headers, json=self.payload, params=self.params)
                     if response.status_code >= 400:
                         raise Exception(f"Supabase PATCH Error {response.status_code}: {response.text}")
                     return SupabaseResponse(response, response.json())
-        return Operation(self)
+        return Operation(self, data)
 
     def upsert(self, data: list, on_conflict: str = None):
         class Operation:
+            def __init__(self, table, payload, conflict_col):
+                self.table = table
+                self.payload = payload
+                self.conflict_col = conflict_col
+                
             def execute(self):
                 with httpx.Client() as client:
-                    url = f"{self.client.base_url}/{self.table_name}"
-                    headers = self.client.headers.copy()
+                    url = f"{self.table.client.base_url}/{self.table.table_name}"
+                    headers = self.table.client.headers.copy()
                     headers["Prefer"] = "resolution=merge-duplicates,return=representation"
-                    if on_conflict: headers["Prefer"] += f",on_conflict={on_conflict}"
-                    response = client.post(url, headers=headers, json=data)
+                    if self.conflict_col: headers["Prefer"] += f",on_conflict={self.conflict_col}"
+                    response = client.post(url, headers=headers, json=self.payload)
                     if response.status_code >= 400:
                         raise Exception(f"Supabase UPSERT Error {response.status_code}: {response.text}")
                     return SupabaseResponse(response, response.json())
-        return Operation()
+        return Operation(self, data, on_conflict)
 
     def delete(self):
         class Operation:
-            def __init__(self, table): self.table = table; self.params = {}
+            def __init__(self, table):
+                self.table = table
+                self.params = {}
             def eq(self, col, val): self.params[col] = f"eq.{val}"; return self
             def execute(self):
                 with httpx.Client() as client:
