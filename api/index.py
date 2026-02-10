@@ -1,36 +1,53 @@
-import sys
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 import os
-import traceback
+import sys
 
-# 1. Add backend to path
-current_dir = os.path.dirname(__file__)
-backend_dir = os.path.join(current_dir, '..', 'backend')
-sys.path.append(backend_dir)
+# Minimal Diagnostic App
+app = FastAPI()
 
-# 2. Try to import the Real App
-try:
-    from main import app
-except Exception as e_main:
-    error_trace_main = traceback.format_exc()
-    
-    # 3. Try to import FastAPI for Emergency App
+@app.get("/api/health")
+def health():
+    return debug_info()
+
+@app.get("/api/{catchall:path}")
+def catch_all(catchall: str):
+    return debug_info()
+
+def debug_info():
     try:
-        from fastapi import FastAPI
-        from fastapi.responses import PlainTextResponse
+        current_dir = os.getcwd()
+        files_current = str(os.listdir(current_dir))
         
-        app = FastAPI(title="Emergency Failover")
+        # Check parent/backend
+        path_parent = os.path.join(current_dir, '..')
+        files_parent = "ACCESSIBLE"
+        try:
+            files_parent = str(os.listdir(path_parent))
+        except:
+            files_parent = "ERROR_READING_PARENT"
+            
+        path_backend = os.path.join(path_parent, 'backend')
+        files_backend = "BACKEND_NOT_FOUND"
+        if os.path.exists(path_backend):
+            try:
+                files_backend = str(os.listdir(path_backend))
+            except:
+                files_backend = "ERROR_READING_BACKEND"
         
-        @app.get("/{path:path}")
-        def catch_all(path: str):
-            return PlainTextResponse(f"CRITICAL BACKEND ERROR\n\nMain App Import Failed:\n{error_trace_main}")
-
-    except ImportError:
-        # 4. Ultimate Fallback: Raw WSGI (No dependecies required)
-        # If FastAPI is missing, we use standard WSGI to print the error.
-        def app(environ, start_response):
-            status = '500 Internal Server Error'
-            output = f"CRITICAL: FastAPI module not found.\n\nTraceback:\n{error_trace_main}".encode('utf-8')
-            response_headers = [('Content-type', 'text/plain'), ('Content-Length', str(len(output)))]
-            start_response(status, response_headers)
-            return [output]
+        sys_path = str(sys.path)
+        
+        return {
+            "status": "DIAGNOSTIC_MODE",
+            "message": "API Function is Running!",
+            "filesystem": {
+                "cwd": current_dir,
+                "files_cwd": files_current,
+                "files_parent": files_parent,
+                "files_backend": files_backend
+            },
+            "sys_path": sys_path
+        }
+    except Exception as e:
+        return {"status": "CRITICAL_DIAGNOSTIC_FAILURE", "error": str(e)}
 

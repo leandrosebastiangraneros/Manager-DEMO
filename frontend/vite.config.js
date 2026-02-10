@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  // Vercel root deployment
+  base: '/',
   css: {
     devSourcemap: false
   },
