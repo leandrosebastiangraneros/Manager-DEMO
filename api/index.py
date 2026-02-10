@@ -76,7 +76,18 @@ async def catch_all(request: Request, path_name: str):
                     self.body += message.get("body", b"")
 
         capturer = ResponseCapturer()
-        await backend(scope, receive, capturer.send)
+        
+        try:
+            await backend(scope, receive, capturer.send)
+        except Exception as runtime_e:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "Backend Runtime Crash",
+                    "detail": str(runtime_e),
+                    "traceback": traceback.format_exc()
+                }
+            )
         
         return Response(
             content=capturer.body, 
