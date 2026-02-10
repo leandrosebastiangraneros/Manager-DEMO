@@ -140,5 +140,8 @@ class AppMovementCreate(AppMovementBase):
 class AppMovement(AppMovementBase):
     id: int
     created_at: datetime
+    stock_item_id: Optional[int] = None
+    transaction_id: Optional[int] = None
+    sale_id: Optional[int] = None
     class Config:
         from_attributes = True
