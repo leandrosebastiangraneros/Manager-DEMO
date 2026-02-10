@@ -468,7 +468,7 @@ def fix_db_schema(db: Session = Depends(get_db)):
         db.rollback()
         return {"status": "ERROR", "detail": str(e), "log": status_log}
 
-@app.post("/reset-db")
+@app.api_route("/reset-db", methods=["GET", "POST"])
 def reset_database(db: Session = Depends(get_db)):
     # Option 2: Drop all tables and recreate them (Cleanest Factory Reset)
     try:
