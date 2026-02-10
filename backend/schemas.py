@@ -88,3 +88,19 @@ class ExpenseDocument(ExpenseDocumentBase):
     file_type: str
     class Config:
         from_attributes = True
+
+# --- ACTIVITY LOG (MOVEMENTS) ---
+class AppMovementBase(BaseModel):
+    category: str # STOCK, VENTA, FINANZAS, SISTEMA
+    action: str   # ALTA, VENTA, REPORTE, GASTO
+    description: str
+    metadata: Optional[Dict[str, Any]] = {}
+
+class AppMovementCreate(AppMovementBase):
+    pass
+
+class AppMovement(AppMovementBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True

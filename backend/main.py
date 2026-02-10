@@ -54,6 +54,19 @@ UPLOAD_DIR = "/tmp/uploads" if os.getenv("VERCEL") else "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
+# Helper for Activity Logging
+def log_movement(category: str, action: str, description: str, metadata: dict = {}):
+    try:
+        data = {
+            "category": category,
+            "action": action,
+            "description": description,
+            "metadata": metadata
+        }
+        supabase.table("app_movements").insert(data).execute()
+    except Exception as e:
+        logger.error(f"Failed to log movement: {e}")
+
 # --- HEALTH ---
 @app.get("/api/ping")
 @app.get("/ping")
@@ -96,6 +109,11 @@ def create_transaction(transaction: schemas.TransactionCreate):
 @app.get("/transactions", response_model=List[schemas.Transaction])
 def read_transactions(skip: int = 0, limit: int = 100):
     res = supabase.table("transactions").select("*").order("date", desc=True).range(skip, skip + limit - 1).execute()
+    return res.data or []
+
+@app.get("/movements", response_model=List[schemas.AppMovement])
+def read_movements(limit: int = 100):
+    res = supabase.table("app_movements").select("*").order("created_at", desc=True).limit(limit).execute()
     return res.data or []
 
 @app.get("/dashboard-stats")
@@ -167,7 +185,14 @@ def create_stock_item(item: schemas.StockItemCreate):
     stock_res = supabase.table("stock_items").insert(stock_data).execute()
     if not stock_res.data:
         raise HTTPException(status_code=400, detail="Failed to create stock item")
-        
+    
+    # LOG MOVEMENT
+    log_movement(
+        "STOCK", "ALTA", 
+        f"Ingreso de producto: {item.name} ({item.initial_quantity} unidades)",
+        {"product_id": stock_res.data[0]["id"], "qty": item.initial_quantity}
+    )
+    
     return stock_res.data[0]
 
 @app.put("/stock/{item_id}", response_model=schemas.StockItem)
@@ -234,6 +259,13 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
             "status": "DEPLETED" if new_qty <= 0 else "AVAILABLE"
         }).eq("id", p["product"]["id"]).execute()
         
+    # Log movement
+    log_movement(
+        "VENTA", "VENTA_LOTE", 
+        f"Venta realizada: {batch.description} - Total: ${total_sale_amount:,.2f}",
+        {"total": total_sale_amount, "items_count": len(batch.items)}
+    )
+        
     return {"status": "success", "total": total_sale_amount}
 
 # --- FINANCES ---
@@ -274,6 +306,12 @@ async def upload_expense(
     doc_data = {"description": description, "amount": amount, "date": date, "file_path": filepath, "file_type": ext}
     res = supabase.table("expense_documents").insert(doc_data).execute()
     
+    log_movement(
+        "FINANZAS", "GASTO", 
+        f"Comprobante cargado: {description} - ${amount:,.2f}",
+        {"amount": amount, "file_id": file_id}
+    )
+    
     return res.data[0]
 
 # --- SEED & RESET ---
@@ -292,6 +330,7 @@ def seed_categories():
         {"name": "Otros Ingresos", "type": "INCOME"}
     ]
     res = supabase.table("categories").upsert(categories, on_conflict="name").execute()
+    log_movement("SISTEMA", "CONFIG", "Categorías inicializadas o actualizadas")
     return {"status": "success", "data": res.data}
 
 @app.api_route("/reset-db", methods=["GET", "POST"])
@@ -340,4 +379,11 @@ def generate_accounting_report(month: int, year: int):
     elements.append(Paragraph(f"<b>BALANCE NETO: ${(total_inc - total_exp):,.2f}</b>", styles['Heading1']))
     
     doc.build(elements)
+    
+    log_movement(
+        "SISTEMA", "REPORTE", 
+        f"Generado Reporte PDF Período {month}/{year}",
+        {"month": month, "year": year}
+    )
+    
     return FileResponse(filepath, filename=filename, media_type='application/pdf')
