@@ -143,7 +143,8 @@ def get_dashboard_stats():
 # --- PROVISION & STOCK ---
 @app.get("/stock", response_model=List[schemas.StockItem])
 def read_stock():
-    res = supabase.table("stock_items").select("*").order("name").execute()
+    # Fetch stock items with their formats
+    res = supabase.table("stock_items").select("*, formats:stock_item_formats(*)").order("name").execute()
     return res.data or []
 
 @app.post("/stock", response_model=schemas.StockItem)
@@ -264,14 +265,22 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             # Unit cost is handled by Supabase as a generated column (cost_amount / initial_quantity)
             # or it is restricted from manual input. We omit it from the payload to avoid 428C9 error.
             
+            formats = stock_data.pop("formats", [])
             stock_res = supabase.table("stock_items").insert(stock_data).execute()
             if stock_res.data:
+                new_item_id = stock_res.data[0]["id"]
+                # Insert formats
+                for fmt in formats:
+                    fmt_data = fmt.model_dump() if hasattr(fmt, "model_dump") else fmt
+                    fmt_data["stock_item_id"] = new_item_id
+                    supabase.table("stock_item_formats").insert(fmt_data).execute()
+
                 log_movement(
                     "STOCK", "ALTA", 
                     f"Ingreso (Batch): {item.name} ({total_initial} unidades)",
-                    {"product_id": stock_res.data[0]["id"], "qty": total_initial}
+                    {"product_id": new_item_id, "qty": total_initial}
                 )
-                processed.append({"id": stock_res.data[0]["id"], "name": item.name, "status": "created"})
+                processed.append({"id": new_item_id, "name": item.name, "status": "created"})
 
     return {"status": "success", "processed": processed}
 
@@ -288,6 +297,19 @@ def update_stock_item(item_id: int, item: schemas.StockItemCreate):
 @app.delete("/stock/{item_id}")
 def delete_stock_item(item_id: int):
     supabase.table("stock_items").delete().eq("id", item_id).execute()
+    return {"status": "deleted"}
+
+# --- STOCK FORMATS ---
+@app.post("/stock/formats", response_model=schemas.StockItemFormat)
+def create_stock_format(format: schemas.StockItemFormatCreate):
+    res = supabase.table("stock_item_formats").insert(format.model_dump()).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Failed to create format")
+    return res.data[0]
+
+@app.delete("/stock/formats/{format_id}")
+def delete_stock_format(format_id: int):
+    supabase.table("stock_item_formats").delete().eq("id", format_id).execute()
     return {"status": "deleted"}
 
 # --- BATCH SALES ---
@@ -308,9 +330,21 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
         if not product: raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
         
         if s_item.is_pack:
-            # Usar pack_price si existe, sino calcular (selling_price * pack_size)
-            price = product.get("pack_price") or ((product.get("selling_price") or 0) * (product.get("pack_size") or 1))
-            deduct_qty = s_item.quantity * (product.get("pack_size") or 1)
+            # Multi-format Logic: Try to find the specific format
+            format_data = None
+            if s_item.format_id:
+                f_res = supabase.table("stock_item_formats").select("*").eq("id", s_item.format_id).single().execute()
+                format_data = f_res.data
+            
+            if format_data:
+                price = format_data["pack_price"]
+                p_size = format_data["pack_size"]
+            else:
+                # Legacy Fallback or Default
+                price = product.get("pack_price") or ((product.get("selling_price") or 0) * (product.get("pack_size") or 1))
+                p_size = product.get("pack_size") or 1
+                
+            deduct_qty = s_item.quantity * p_size
         else:
             price = product.get("selling_price") or 0
             deduct_qty = s_item.quantity

@@ -36,6 +36,12 @@ const Stock = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedExisting, setSelectedExisting] = useState(null);
 
+    // Form State for Formats
+    const [newItemFormats, setNewItemFormats] = useState([]);
+    const [formatPackSize, setFormatPackSize] = useState('');
+    const [formatPackPrice, setFormatPackPrice] = useState('');
+    const [formatLabel, setFormatLabel] = useState('');
+
     // Form State for Sell
     const [sellPriceUnit, setSellPriceUnit] = useState('');
     const [sellQuantity, setSellQuantity] = useState('1');
@@ -60,7 +66,48 @@ const Stock = () => {
         fetch(`${API_URL}/categories`)
             .then(res => res.json())
             .then(data => setCategories(Array.isArray(data) ? data : []))
-            .catch(err => console.error("Error cats:", err));
+            .catch(err => console.error("Error categories:", err));
+    };
+
+    const addFormatToItem = (e) => {
+        e.preventDefault();
+        if (!formatPackSize || !formatPackPrice) return;
+
+        const newFormat = {
+            pack_size: parseFloat(formatPackSize),
+            pack_price: parseFloat(formatPackPrice),
+            label: formatLabel || `Pack x${formatPackSize}`
+        };
+
+        if (isEditing) {
+            // Si estamos editando, guardamos directo en DB
+            fetch(`${API_URL}/stock/formats`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...newFormat, stock_item_id: selectedItem.id })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    fetchStock();
+                    // Actualizar localmente el item seleccionado para el modal
+                    setSelectedItem(prev => ({ ...prev, formats: [...(prev.formats || []), newFormat] }));
+                });
+        } else {
+            // Si es nuevo o draft, guardamos en estado local
+            setNewItemFormats([...newItemFormats, newFormat]);
+        }
+
+        setFormatPackSize('');
+        setFormatPackPrice('');
+        setFormatLabel('');
+    };
+
+    const deleteFormat = (formatId, index) => {
+        if (isEditing && formatId) {
+            fetch(`${API_URL}/stock/formats/${formatId}`, { method: 'DELETE' })
+                .then(() => fetchStock());
+        }
+        setNewItemFormats(newItemFormats.filter((_, i) => i !== index));
     };
 
     useEffect(() => {
@@ -71,15 +118,17 @@ const Stock = () => {
     const openEditModal = (item) => {
         setIsEditing(true);
         setEditingId(item.id);
+        setSelectedItem(item);
         setNewItemName(item.name);
         setNewItemBrand(item.brand || '');
-        setNewItemCost(item.unit_cost); // O el costo que prefieras mostrar al editar
+        setNewItemCost(item.unit_cost);
         setNewItemQuantity(item.quantity);
         setNewItemSellingPrice(item.selling_price);
         setNewItemPackPrice(item.pack_price || '');
         setNewItemCategoryId(item.category_id || '');
         setIsPack(item.is_pack || false);
         setPackSize(item.pack_size || '1');
+        setNewItemFormats(item.formats || []);
         setIsAddModalOpen(true);
     };
 
@@ -116,12 +165,13 @@ const Stock = () => {
             name: newItemName,
             brand: newItemBrand,
             is_pack: isPack,
-            pack_size: parseFloat(packSize),
+            pack_size: pSize,
             cost_amount: cost,
             quantity: qty,
             selling_price: sellPrice,
-            pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
-            category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
+            pack_price: packP,
+            category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null,
+            formats: [...newItemFormats]
         };
 
         setDraftItems([...draftItems, draftItem]);
@@ -557,7 +607,14 @@ const Stock = () => {
                                             <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost * (item.pack_size || 1))}</td>
                                             <td className="p-4 text-right font-mono font-bold text-xs text-green-600">{formatMoney(item.selling_price)}</td>
                                             <td className="p-4 text-right font-mono font-bold text-xs text-blue-600">
-                                                {formatMoney(item.pack_price || (item.selling_price * (item.pack_size || 1)))}
+                                                <div className="flex flex-col items-end">
+                                                    <span>{formatMoney(item.pack_price || (item.selling_price * (item.pack_size || 1)))}</span>
+                                                    {(item.formats && item.formats.length > 0) && (
+                                                        <span className="text-[8px] opacity-70 bg-blue-50 px-1 rounded mt-1">
+                                                            +{item.formats.length} formatos
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
@@ -584,9 +641,12 @@ const Stock = () => {
                                                 {item.brand ? <span className="text-gray-400 font-medium mr-1">{item.brand}</span> : ''}
                                                 {item.name}
                                             </h3>
-                                            <div className="flex gap-2 text-[9px] font-mono mt-1">
+                                            <div className="flex gap-2 text-[9px] font-mono mt-1 flex-wrap">
                                                 <span className="text-green-600 bg-green-50 px-1 rounded">U: {formatMoney(item.selling_price)}</span>
                                                 <span className="text-blue-600 bg-blue-50 px-1 rounded">P: {formatMoney(item.pack_price || (item.selling_price * item.pack_size))}</span>
+                                                {(item.formats && item.formats.length > 0) && (
+                                                    <span className="text-blue-500 bg-blue-100/50 px-1 rounded">+{item.formats.length} formatos</span>
+                                                )}
                                             </div>
                                         </div>
                                         <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
@@ -634,6 +694,73 @@ const Stock = () => {
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Pack</label>
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
+                        </div>
+                    </div>
+
+                    {/* Multi-Format Section */}
+                    <div className="pt-4 border-t border-panel-border/10">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-3 block tracking-widest">Otros Formatos de Pack</label>
+
+                        <div className="space-y-3 mb-4">
+                            {newItemFormats.map((fmt, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-surface-highlight rounded-xl border border-panel-border/5 group animate-fadeIn">
+                                    <div className="flex gap-4 items-center">
+                                        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent font-bold text-xs">
+                                            x{fmt.pack_size}
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-bold text-txt-primary">{fmt.label}</div>
+                                            <div className="text-[10px] text-txt-dim font-mono">{formatMoney(fmt.pack_price)}</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => deleteFormat(fmt.id, idx)}
+                                        className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <span className="material-icons text-sm">delete</span>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-12 gap-2 bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
+                            <div className="col-span-3">
+                                <input
+                                    type="number"
+                                    placeholder="Cant."
+                                    className="w-full p-2 bg-surface border border-panel-border/20 rounded-lg text-[10px] outline-none font-mono"
+                                    value={formatPackSize}
+                                    onChange={e => setFormatPackSize(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-span-4">
+                                <input
+                                    type="number"
+                                    placeholder="Precio"
+                                    className="w-full p-2 bg-surface border border-panel-border/20 rounded-lg text-[10px] outline-none font-mono"
+                                    value={formatPackPrice}
+                                    onChange={e => setFormatPackPrice(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-span-3">
+                                <input
+                                    type="text"
+                                    placeholder="Etiqueta"
+                                    className="w-full p-2 bg-surface border border-panel-border/20 rounded-lg text-[10px] outline-none"
+                                    value={formatLabel}
+                                    onChange={e => setFormatLabel(e.target.value)}
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <button
+                                    type="button"
+                                    onClick={addFormatToItem}
+                                    className="w-full h-full bg-void text-white rounded-lg flex items-center justify-center hover:bg-accent hover:text-void transition-all"
+                                >
+                                    <span className="material-icons text-sm">add</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

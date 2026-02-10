@@ -58,39 +58,72 @@ const Ventas = () => {
         }
     };
 
-    const updateCart = (productId, qty, type = 'unit') => {
+    const updateCart = (productId, qty, type = 'unit', formatId = null) => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
-        const cartKey = `${productId}_${type}`;
+        const cartKey = formatId ? `${productId}_${type}_${formatId}` : `${productId}_${type}`;
         const newQty = parseFloat(qty) || 0;
 
         // Stock check
-        const unitsNeeded = type === 'pack' ? newQty * (product.pack_size || 1) : newQty;
+        // If type is pack and formatId exists, use format's pack_size
+        let pSize = product.pack_size || 1;
+        if (type === 'pack' && formatId) {
+            const fmt = product.formats?.find(f => f.id === formatId);
+            if (fmt) pSize = fmt.pack_size;
+        }
 
-        // Need to account for current quantity of OTHER type of the same product in cart
-        const otherType = type === 'unit' ? 'pack' : 'unit';
-        const otherKey = `${productId}_${otherType}`;
-        const otherQty = cart[otherKey] || 0;
-        const otherUnits = otherType === 'pack' ? otherQty * (product.pack_size || 1) : otherQty;
+        const unitsNeeded = type === 'pack' ? newQty * pSize : newQty;
 
-        if (unitsNeeded + otherUnits > product.quantity) {
+        // Simplify stock validation: calculate all units for this product in cart
+        const totalOtherUnits = Object.entries(cart).reduce((acc, [key, q]) => {
+            if (key.startsWith(`${productId}_`) && key !== cartKey) {
+                const parts = key.split('_');
+                const t = parts[1];
+                const fId = parts[2];
+                let size = 1;
+                if (t === 'pack') {
+                    if (fId) {
+                        const fmt = product.formats?.find(f => f.id === parseInt(fId));
+                        size = fmt ? fmt.pack_size : product.pack_size || 1;
+                    } else {
+                        size = product.pack_size || 1;
+                    }
+                }
+                return acc + (q * size);
+            }
+            return acc;
+        }, 0);
+
+        if (unitsNeeded + totalOtherUnits > product.quantity) {
             toast.error(`Stock insuficiente para ${product.name}`);
             return;
         }
 
-        setCart(prev => ({ ...prev, [cartKey]: newQty }));
+        if (newQty <= 0) {
+            const newCart = { ...cart };
+            delete newCart[cartKey];
+            setCart(newCart);
+        } else {
+            setCart(prev => ({ ...prev, [cartKey]: newQty }));
+        }
     };
 
     const calculateTotal = () => {
         return Object.entries(cart).reduce((sum, [key, qty]) => {
-            const [id, type] = key.split('_');
+            const [id, type, formatId] = key.split('_');
             const product = products.find(p => p.id === parseInt(id));
             if (!product) return sum;
 
-            const price = type === 'pack'
-                ? (product.pack_price || (product.selling_price * product.pack_size))
-                : (product.selling_price || 0);
+            let price = product.selling_price || 0;
+            if (type === 'pack') {
+                if (formatId) {
+                    const fmt = product.formats?.find(f => f.id === parseInt(formatId));
+                    price = fmt ? fmt.pack_price : (product.pack_price || (product.selling_price * product.pack_size));
+                } else {
+                    price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                }
+            }
 
             return sum + price * qty;
         }, 0);
@@ -104,11 +137,12 @@ const Ventas = () => {
                 items: Object.entries(cart)
                     .filter(([_, qty]) => qty > 0)
                     .map(([key, qty]) => {
-                        const [id, type] = key.split('_');
+                        const [id, type, formatId] = key.split('_');
                         return {
                             item_id: parseInt(id),
                             quantity: qty,
-                            is_pack: type === 'pack'
+                            is_pack: type === 'pack',
+                            format_id: formatId ? parseInt(formatId) : null
                         };
                     }),
                 description: description
@@ -258,13 +292,45 @@ const Ventas = () => {
                                                         >
                                                             <span>UNIDAD</span>
                                                         </button>
-                                                        {product.pack_size > 1 && (
-                                                            <button
-                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
-                                                                className="py-2 px-1 bg-accent text-void hover:opacity-90 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-panel-border/10"
-                                                            >
-                                                                <span>PACK x{product.pack_size}</span>
-                                                            </button>
+                                                        {((product.formats && product.formats.length > 0) || product.pack_size > 1) && (
+                                                            <div className="relative group/pack w-full">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (product.formats?.length > 0) {
+                                                                            // Si hay varios formatos, abrimos selector (podemos usar un dropdown simple de CSS hover)
+                                                                        } else {
+                                                                            updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack');
+                                                                        }
+                                                                    }}
+                                                                    className="w-full py-2 px-1 bg-accent text-void hover:opacity-90 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-panel-border/10"
+                                                                >
+                                                                    <span>PACK {product.formats?.length > 0 ? '...' : `x${product.pack_size}`}</span>
+                                                                </button>
+
+                                                                {/* Dropdown de Formatos */}
+                                                                {product.formats?.length > 0 && (
+                                                                    <div className="absolute bottom-full left-0 w-full bg-surface border border-panel-border rounded-xl shadow-2xl z-50 mb-1 hidden group-hover/pack:block animate-fadeIn overflow-hidden">
+                                                                        {/* Legacy Option if exists */}
+                                                                        {product.pack_size > 1 && (
+                                                                            <button
+                                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
+                                                                                className="w-full text-left px-3 py-2 hover:bg-surface-highlight text-[9px] border-b border-panel-border/5"
+                                                                            >
+                                                                                Principal x{product.pack_size}
+                                                                            </button>
+                                                                        )}
+                                                                        {product.formats.map(fmt => (
+                                                                            <button
+                                                                                key={fmt.id}
+                                                                                onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
+                                                                                className="w-full text-left px-3 py-2 hover:bg-surface-highlight text-[9px] border-b border-panel-border/5 last:border-0"
+                                                                            >
+                                                                                {fmt.label || `x${fmt.pack_size}`} - {formatMoney(fmt.pack_price)}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -311,13 +377,24 @@ const Ventas = () => {
                             Object.entries(cart)
                                 .filter(([_, qty]) => qty > 0)
                                 .map(([cartKey, qty]) => {
-                                    const [id, type] = cartKey.split('_');
+                                    const [id, type, formatId] = cartKey.split('_');
                                     const product = products.find(p => p.id === parseInt(id));
                                     if (!product) return null;
 
-                                    const price = type === 'pack'
-                                        ? (product.pack_price || (product.selling_price * product.pack_size))
-                                        : (product.selling_price || 0);
+                                    let price = product.selling_price || 0;
+                                    let label = product.name;
+                                    let formatLabel = "";
+
+                                    if (type === 'pack') {
+                                        if (formatId) {
+                                            const fmt = product.formats?.find(f => f.id === parseInt(formatId));
+                                            price = fmt ? fmt.pack_price : (product.pack_price || (product.selling_price * (product.pack_size || 1)));
+                                            formatLabel = fmt ? (fmt.label || `x${fmt.pack_size}`) : `x${product.pack_size}`;
+                                        } else {
+                                            price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                                            formatLabel = `x${product.pack_size}`;
+                                        }
+                                    }
 
                                     return (
                                         <div key={cartKey} className="flex items-center gap-4 group">
@@ -327,19 +404,19 @@ const Ventas = () => {
                                                     type="number"
                                                     className="w-full text-center h-10 text-xs font-bold font-mono text-txt-primary bg-transparent outline-none border-b border-gray-100"
                                                     value={qty}
-                                                    onChange={(e) => updateCart(product.id, e.target.value, type)}
+                                                    onChange={(e) => updateCart(product.id, e.target.value, type, formatId)}
                                                     min="0.1"
                                                     step="0.1"
                                                 />
                                                 <div className="flex w-full">
                                                     <button
-                                                        onClick={() => updateCart(product.id, qty + 1, type)}
+                                                        onClick={() => updateCart(product.id, qty + 1, type, formatId)}
                                                         className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors border-r border-gray-100"
                                                     >
                                                         <span className="material-icons text-[10px]">add</span>
                                                     </button>
                                                     <button
-                                                        onClick={() => updateCart(product.id, Math.max(0, qty - 1), type)}
+                                                        onClick={() => updateCart(product.id, Math.max(0, qty - 1), type, formatId)}
                                                         className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
                                                     >
                                                         <span className="material-icons text-[10px]">remove</span>
@@ -351,6 +428,7 @@ const Ventas = () => {
                                                 <div className="text-txt-primary text-sm font-bold truncate">
                                                     {type === 'pack' ? <span className="text-[10px] bg-void text-white px-1 rounded mr-1">P</span> : <span className="text-[10px] bg-accent text-void px-1 rounded mr-1">U</span>}
                                                     {product.name}
+                                                    {formatLabel && <span className="ml-1 text-[9px] text-accent font-mono uppercase">[{formatLabel}]</span>}
                                                 </div>
                                                 <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
                                                     <span className="font-mono">{formatMoney(price)}</span>
@@ -360,7 +438,7 @@ const Ventas = () => {
                                             </div>
 
                                             <button
-                                                onClick={() => updateCart(product.id, 0, type)}
+                                                onClick={() => updateCart(product.id, 0, type, formatId)}
                                                 className="text-gray-300 hover:text-red-500 transition-colors p-2"
                                             >
                                                 <span className="material-icons text-lg">delete_outline</span>
