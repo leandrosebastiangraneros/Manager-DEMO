@@ -528,9 +528,10 @@ const Stock = () => {
                                                         <span className="material-icons text-xl">{item.is_pack ? 'inventory_2' : 'shopping_bag'}</span>
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-[13px] font-black text-txt-primary line-clamp-1 uppercase tracking-tight">{item.name}</span>
+                                                        <span className="text-[13px] font-black text-txt-primary line-clamp-1 uppercase tracking-tight">
+                                                            {item.brand ? `${item.brand} ` : ''}{item.name}
+                                                        </span>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[9px] text-txt-dim uppercase font-black tracking-widest">{item.brand || 'Marca Genérica'}</span>
                                                             {item.category_name && (
                                                                 <span className="text-[8px] bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full uppercase font-black text-accent">{item.category_name}</span>
                                                             )}
@@ -543,7 +544,7 @@ const Stock = () => {
                                                     <span className={`text-[14px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
                                                         {item.quantity}
                                                     </span>
-                                                    {item.is_pack && item.pack_size > 1 && (
+                                                    {(item.is_pack || (item.formats && item.formats.length > 0)) && item.pack_size > 1 && (
                                                         <span className="text-[8px] text-txt-dim font-bold uppercase tracking-widest">x{item.pack_size} p/u</span>
                                                     )}
                                                 </div>
@@ -554,12 +555,22 @@ const Stock = () => {
                                                         <span className="text-[8px] font-black text-txt-dim uppercase tracking-tighter">Unitario:</span>
                                                         <span className="text-[11px] font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</span>
                                                     </div>
+
+                                                    {/* DEFAULT PACK IF EXISTS */}
                                                     {item.is_pack && item.pack_price > 0 && (
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[8px] font-black text-accent uppercase tracking-tighter">Pack x{item.pack_size}:</span>
                                                             <span className="text-[11px] font-mono font-black text-accent">{formatMoney(item.pack_price)}</span>
                                                         </div>
                                                     )}
+
+                                                    {/* EXTRA FORMATS */}
+                                                    {item.formats && item.formats.map(fmt => (
+                                                        <div key={fmt.id} className="flex items-center gap-2 border-t border-panel-border/5 pt-1 mt-1 w-full justify-end">
+                                                            <span className="text-[8px] font-black text-accent uppercase tracking-tighter">Pack x{fmt.pack_size}:</span>
+                                                            <span className="text-[11px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </td>
                                             <td className="p-4 text-center">
@@ -596,8 +607,9 @@ const Stock = () => {
                                                     <span className="material-icons text-xl">{item.is_pack ? 'inventory_2' : 'shopping_bag'}</span>
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-black text-txt-primary uppercase tracking-tight">{item.name}</span>
-                                                    <span className="text-[10px] text-txt-dim uppercase font-black tracking-widest">{item.brand || 'Marca Genérica'}</span>
+                                                    <span className="text-sm font-black text-txt-primary uppercase tracking-tight">
+                                                        {item.brand ? `${item.brand} ` : ''}{item.name}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${isLowStock ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' : 'bg-green-500/10 text-green-600 border border-green-500/20'}`}>
@@ -609,17 +621,23 @@ const Stock = () => {
                                                 <span className="text-[8px] text-txt-dim uppercase font-black">Stock Actual</span>
                                                 <div className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-panel-border/5">
-                                                <div>
+                                            <div className="flex flex-col gap-2 mt-1 pt-2 border-t border-panel-border/5">
+                                                <div className="flex justify-between items-center">
                                                     <span className="text-[7px] text-txt-dim uppercase font-black block">Unitario</span>
                                                     <div className="text-[10px] font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</div>
                                                 </div>
                                                 {item.is_pack && item.pack_price > 0 && (
-                                                    <div className="text-right">
+                                                    <div className="flex justify-between items-center">
                                                         <span className="text-[7px] text-accent uppercase font-black block">Pack x{item.pack_size}</span>
                                                         <div className="text-[10px] font-mono font-black text-accent">{formatMoney(item.pack_price)}</div>
                                                     </div>
                                                 )}
+                                                {item.formats && item.formats.map(fmt => (
+                                                    <div key={fmt.id} className="flex justify-between items-center border-t border-panel-border/5 pt-1">
+                                                        <span className="text-[7px] text-accent uppercase font-black block">Pack x{fmt.pack_size}</span>
+                                                        <div className="text-[10px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                         <div className="flex gap-2 justify-end pt-1">

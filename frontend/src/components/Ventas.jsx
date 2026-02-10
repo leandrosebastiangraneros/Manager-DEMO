@@ -45,31 +45,48 @@ const Ventas = () => {
         }
     };
 
-    const updateCart = (productId, newQty, type = 'unit') => {
-        const cartKey = `${productId}_${type}`;
+    const updateCart = (productId, newQty, type = 'unit', formatId = null) => {
+        const cartKey = type === 'pack' ? `${productId}_pack_${formatId || 'default'}` : `${productId}_unit`;
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
         newQty = parseFloat(newQty);
         if (isNaN(newQty)) newQty = 0;
 
-        let pSize = product.pack_size || 1;
-        const unitsNeeded = type === 'pack' ? newQty * pSize : newQty;
+        let pSize = 1;
+        if (type === 'pack') {
+            if (formatId) {
+                const fmt = product.formats?.find(f => f.id === formatId);
+                pSize = fmt ? fmt.pack_size : 1;
+            } else {
+                pSize = product.pack_size || 1;
+            }
+        }
 
-        // Check stock
+        const unitsNeeded = newQty * pSize;
+
+        // Check stock against TOTAL units of this product in cart
         const totalOtherUnits = Object.entries(cart).reduce((acc, [key, q]) => {
             if (key.startsWith(`${productId}_`) && key !== cartKey) {
                 const parts = key.split('_');
                 const t = parts[1];
+                const fId = parts[2];
                 let size = 1;
-                if (t === 'pack') size = product.pack_size || 1;
+                if (t === 'pack') {
+                    if (fId && fId !== 'default') {
+                        const fmt = product.formats?.find(f => f.id === parseInt(fId));
+                        size = fmt ? fmt.pack_size : 1;
+                    } else {
+                        size = product.pack_size || 1;
+                    }
+                }
                 return acc + (q * size);
             }
             return acc;
         }, 0);
 
         if (unitsNeeded + totalOtherUnits > product.quantity) {
-            toast.error(`Stock insuficiente para ${product.name}`);
+            toast.error(`Stock insuficiente para ${product.brand || ''} ${product.name}`);
             return;
         }
 
@@ -84,13 +101,21 @@ const Ventas = () => {
 
     const calculateTotal = () => {
         return Object.entries(cart).reduce((sum, [key, qty]) => {
-            const [id, type] = key.split('_');
-            const product = products.find(p => p.id === parseInt(id));
+            const parts = key.split('_');
+            const id = parseInt(parts[0]);
+            const type = parts[1];
+            const fId = parts[2];
+            const product = products.find(p => p.id === id);
             if (!product) return sum;
 
             let price = product.selling_price || 0;
             if (type === 'pack') {
-                price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                if (fId && fId !== 'default') {
+                    const fmt = product.formats?.find(f => f.id === parseInt(fId));
+                    price = fmt ? fmt.pack_price : 0;
+                } else {
+                    price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                }
             }
 
             return sum + price * qty;
@@ -105,12 +130,19 @@ const Ventas = () => {
                 items: Object.entries(cart)
                     .filter(([_, qty]) => qty > 0)
                     .map(([key, qty]) => {
-                        const [id, type] = key.split('_');
-                        return {
-                            item_id: parseInt(id),
+                        const parts = key.split('_');
+                        const id = parseInt(parts[0]);
+                        const type = parts[1];
+                        const fId = parts[2];
+                        const item = {
+                            item_id: id,
                             quantity: qty,
                             is_pack: type === 'pack'
                         };
+                        if (fId && fId !== 'default') {
+                            item.format_id = parseInt(fId);
+                        }
+                        return item;
                     }),
                 description: description
             };
@@ -138,6 +170,7 @@ const Ventas = () => {
     };
 
     const formatMoney = (val) => {
+        if (val === undefined || val === null) return '$ 0,00';
         return val.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
     };
 
@@ -242,8 +275,12 @@ const Ventas = () => {
                                 {filteredProducts.map(product => {
                                     const isLowStock = product.quantity <= (product.min_stock_alert || 0);
                                     const inCartUnit = cart[`${product.id}_unit`] > 0;
-                                    const inCartPack = cart[`${product.id}_pack`] > 0;
+                                    const inCartPack = Object.keys(cart).some(key => key.startsWith(`${product.id}_pack`));
                                     const inCart = inCartUnit || inCartPack;
+                                    const itemInCartCount = Object.entries(cart).reduce((acc, [key, q]) => {
+                                        if (key.startsWith(`${product.id}_`)) return acc + q;
+                                        return acc;
+                                    }, 0);
 
                                     return (
                                         <tr key={product.id} className={`hover:bg-accent/5 transition-colors group ${inCart ? 'bg-accent/5' : ''} border-l-2 ${inCart ? 'border-l-accent' : 'border-l-transparent'}`}>
@@ -254,9 +291,13 @@ const Ventas = () => {
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[13px] font-black text-txt-primary line-clamp-1 uppercase tracking-tight">{product.name}</span>
+                                                            <span className="text-[13px] font-black text-txt-primary line-clamp-1 uppercase tracking-tight">
+                                                                {product.brand ? `${product.brand} ` : ''}{product.name}
+                                                            </span>
                                                         </div>
-                                                        <span className="text-[9px] text-txt-dim uppercase font-black tracking-widest">{product.brand || 'Genérico'}</span>
+                                                        {itemInCartCount > 0 && (
+                                                            <span className="text-[9px] text-accent font-black uppercase tracking-widest animate-pulse">En Carrito ({itemInCartCount})</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -278,7 +319,10 @@ const Ventas = () => {
                                             <td className="p-4 hidden lg:table-cell text-right">
                                                 <div className="flex flex-col items-end">
                                                     <span className="text-[13px] font-mono font-black text-txt-primary">{formatMoney(product.selling_price)}</span>
-                                                    {product.is_pack && product.pack_price > 0 && <span className="text-[8px] text-accent font-black uppercase tracking-tighter">Pack: {formatMoney(product.pack_price)}</span>}
+                                                    {product.is_pack && product.pack_price > 0 && <span className="text-[8px] text-accent font-black uppercase tracking-tighter">Pack x{product.pack_size}: {formatMoney(product.pack_price)}</span>}
+                                                    {product.formats?.map(fmt => (
+                                                        <span key={fmt.id} className="text-[7px] text-txt-dim font-black uppercase tracking-tighter block">Pack x{fmt.pack_size}: {formatMoney(fmt.pack_price)}</span>
+                                                    ))}
                                                 </div>
                                             </td>
                                             <td className="p-4 hidden md:table-cell text-center">
@@ -288,7 +332,7 @@ const Ventas = () => {
                                                 </div>
                                             </td>
                                             <td className="p-4 text-right pr-6">
-                                                <div className="flex items-center gap-2 justify-end">
+                                                <div className="flex items-center gap-2 justify-end relative">
                                                     {/* Botón Unidad */}
                                                     <button
                                                         onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
@@ -299,14 +343,52 @@ const Ventas = () => {
                                                     </button>
 
                                                     {/* Botón Pack */}
-                                                    {product.is_pack && (
-                                                        <button
-                                                            onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
-                                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-panel-border/10 shadow-sm ${inCartPack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim hover:bg-void/10'}`}
-                                                            title="Agregar Pack"
-                                                        >
-                                                            {inCartPack ? <span className="text-[10px] font-black">{cart[`${product.id}_pack`]}</span> : <span className="material-icons text-lg">inventory</span>}
-                                                        </button>
+                                                    {(product.is_pack || (product.formats && product.formats.length > 0)) && (
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (product.formats?.length > 0 || (product.is_pack && product.pack_size > 1)) {
+                                                                        setOpenPackDropdown(openPackDropdown === product.id ? null : product.id);
+                                                                    } else {
+                                                                        updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default');
+                                                                    }
+                                                                }}
+                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-panel-border/10 shadow-sm ${inCartPack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim hover:bg-void/10'}`}
+                                                                title="Agregar Pack"
+                                                            >
+                                                                <span className="material-icons text-lg">{inCartPack ? 'inventory' : 'inventory_2'}</span>
+                                                            </button>
+
+                                                            {/* Dropdown de Selección de Formatos */}
+                                                            {openPackDropdown === product.id && (
+                                                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-50 p-2 animate-[fadeIn_0.2s_ease-out]">
+                                                                    <div className="text-[8px] font-black uppercase text-txt-dim p-2 border-b border-panel-border/5 mb-2">Seleccionar Pack</div>
+
+                                                                    {/* Default Pack */}
+                                                                    {product.is_pack && (
+                                                                        <button
+                                                                            onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default'); setOpenPackDropdown(null); }}
+                                                                            className="w-full text-left p-2 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1"
+                                                                        >
+                                                                            <span className="text-[10px] font-black text-txt-primary uppercase">Pack x{product.pack_size}</span>
+                                                                            <span className="text-[10px] font-mono font-black text-accent">{formatMoney(product.pack_price)}</span>
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Additional Formats */}
+                                                                    {product.formats?.map(fmt => (
+                                                                        <button
+                                                                            key={fmt.id}
+                                                                            onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id); setOpenPackDropdown(null); }}
+                                                                            className="w-full text-left p-2 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1"
+                                                                        >
+                                                                            <span className="text-[10px] font-black text-txt-primary uppercase">Pack x{fmt.pack_size}</span>
+                                                                            <span className="text-[10px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
@@ -354,14 +436,27 @@ const Ventas = () => {
                         ) : (
                             Object.entries(cart)
                                 .filter(([_, qty]) => qty > 0)
+                                .sort((a, b) => a[0].localeCompare(b[0]))
                                 .map(([cartKey, qty]) => {
-                                    const [id, type] = cartKey.split('_');
-                                    const product = products.find(p => p.id === parseInt(id));
+                                    const parts = cartKey.split('_');
+                                    const id = parseInt(parts[0]);
+                                    const type = parts[1];
+                                    const fId = parts[2];
+                                    const product = products.find(p => p.id === id);
                                     if (!product) return null;
 
                                     let price = product.selling_price || 0;
+                                    let label = "UNID";
+
                                     if (type === 'pack') {
-                                        price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                                        if (fId && fId !== 'default') {
+                                            const fmt = product.formats?.find(f => f.id === parseInt(fId));
+                                            price = fmt ? fmt.pack_price : 0;
+                                            label = `PACK x${fmt?.pack_size || '?'}`;
+                                        } else {
+                                            price = product.pack_price || (product.selling_price * (product.pack_size || 1));
+                                            label = `PACK x${product.pack_size}`;
+                                        }
                                     }
 
                                     return (
@@ -369,7 +464,7 @@ const Ventas = () => {
                                             {/* Qty Controls - MANUAL INPUT ENABLED */}
                                             <div className="flex flex-col items-center bg-surface-highlight rounded-lg overflow-hidden w-9 shrink-0">
                                                 <button
-                                                    onClick={() => updateCart(product.id, qty + 1, type)}
+                                                    onClick={() => updateCart(product.id, qty + 1, type, fId === 'default' ? 'default' : parseInt(fId))}
                                                     className="w-full h-5 flex items-center justify-center text-txt-dim hover:text-accent font-bold"
                                                 >
                                                     <span className="material-icons text-[12px]">add</span>
@@ -377,11 +472,11 @@ const Ventas = () => {
                                                 <input
                                                     type="number"
                                                     value={qty}
-                                                    onChange={(e) => updateCart(product.id, e.target.value, type)}
+                                                    onChange={(e) => updateCart(product.id, e.target.value, type, fId === 'default' ? 'default' : parseInt(fId))}
                                                     className="w-full text-center text-[10px] font-black font-mono text-txt-primary py-0.5 bg-surface outline-none border-none"
                                                 />
                                                 <button
-                                                    onClick={() => updateCart(product.id, Math.max(0, qty - 1), type)}
+                                                    onClick={() => updateCart(product.id, Math.max(0, qty - 1), type, fId === 'default' ? 'default' : parseInt(fId))}
                                                     className="w-full h-5 flex items-center justify-center text-txt-dim hover:text-red-500 font-bold"
                                                 >
                                                     <span className="material-icons text-[12px]">remove</span>
@@ -390,18 +485,20 @@ const Ventas = () => {
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-txt-primary text-[10px] font-black uppercase tracking-tight truncate leading-tight">
-                                                    {type === 'pack' ? <span className="text-[7px] bg-void text-white px-1 py-0.5 rounded mr-1 font-black underline">PK</span> : <span className="text-[7px] bg-accent text-void px-1 py-0.5 rounded mr-1 font-black">UN</span>}
-                                                    {product.name}
+                                                    {type === 'pack' ? <span className="text-[7px] bg-void text-white px-1 py-0.5 rounded mr-1 font-black">PK</span> : <span className="text-[7px] bg-accent text-void px-1 py-0.5 rounded mr-1 font-black">UN</span>}
+                                                    {product.brand ? `${product.brand} ` : ''}{product.name}
                                                 </div>
-                                                <div className="text-[9px] text-txt-dim mt-0.5 flex flex-wrap items-center gap-x-1.5 font-bold">
-                                                    <span className="font-mono text-accent">{formatMoney(price)}</span>
-                                                    <span className="w-0.5 h-0.5 bg-panel-border/20 rounded-full"></span>
-                                                    <span className="font-mono text-txt-primary">{formatMoney(price * qty)}</span>
+                                                <div className="flex justify-between items-center mt-1">
+                                                    <div className="text-[8px] font-black text-txt-dim uppercase tracking-widest">{label}</div>
+                                                    <div className="text-[9px] text-txt-dim flex items-center gap-x-1.5 font-bold">
+                                                        <span className="font-mono text-accent">{formatMoney(price)}</span>
+                                                        <span className="font-mono text-txt-primary">{formatMoney(price * qty)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             <button
-                                                onClick={() => updateCart(product.id, 0, type)}
+                                                onClick={() => updateCart(product.id, 0, type, fId === 'default' ? 'default' : parseInt(fId))}
                                                 className="text-gray-200 hover:text-red-500 transition-colors p-1"
                                             >
                                                 <span className="material-icons text-lg">cancel</span>
