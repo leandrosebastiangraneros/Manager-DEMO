@@ -1,53 +1,37 @@
 from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
-import os
 import sys
+import os
+import traceback
 
-# Minimal Diagnostic App
-app = FastAPI()
+# DIAGNOSIS RESULT:
+# CWD is /var/task
+# backend is at /var/task/backend
 
-@app.get("/api/health")
-def health():
-    return debug_info()
+# 1. Add backend to path explicitly using CWD
+current_dir = os.getcwd() # /var/task
+backend_dir = os.path.join(current_dir, 'backend')
 
-@app.get("/api/{catchall:path}")
-def catch_all(catchall: str):
-    return debug_info()
+if backend_dir not in sys.path:
+    sys.path.append(backend_dir)
 
-def debug_info():
-    try:
-        current_dir = os.getcwd()
-        files_current = str(os.listdir(current_dir))
-        
-        # Check parent/backend
-        path_parent = os.path.join(current_dir, '..')
-        files_parent = "ACCESSIBLE"
-        try:
-            files_parent = str(os.listdir(path_parent))
-        except:
-            files_parent = "ERROR_READING_PARENT"
-            
-        path_backend = os.path.join(path_parent, 'backend')
-        files_backend = "BACKEND_NOT_FOUND"
-        if os.path.exists(path_backend):
-            try:
-                files_backend = str(os.listdir(path_backend))
-            except:
-                files_backend = "ERROR_READING_BACKEND"
-        
-        sys_path = str(sys.path)
-        
+# 2. Try to import the Real App
+try:
+    from main import app
+except Exception as e_main:
+    error_trace_main = traceback.format_exc()
+    
+    # 3. Emergency App if Main Fails
+    app = FastAPI(title="Emergency Failover")
+    
+    @app.get("/{path:path}")
+    def catch_all(path: str):
         return {
-            "status": "DIAGNOSTIC_MODE",
-            "message": "API Function is Running!",
-            "filesystem": {
-                "cwd": current_dir,
-                "files_cwd": files_current,
-                "files_parent": files_parent,
-                "files_backend": files_backend
-            },
-            "sys_path": sys_path
+            "status": "CRITICAL_BOOT_ERROR", 
+            "detail": "Failed to import 'main' from 'backend'.",
+            "error_message": str(e_main),
+            "traceback": error_trace_main,
+            "sys_path": str(sys.path),
+            "cwd": current_dir,
+            "backend_dir_exists": os.path.exists(backend_dir)
         }
-    except Exception as e:
-        return {"status": "CRITICAL_DIAGNOSTIC_FAILURE", "error": str(e)}
 
