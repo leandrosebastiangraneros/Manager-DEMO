@@ -600,7 +600,7 @@ const Stock = () => {
                             {filteredItems.map(item => {
                                 const isLowStock = item.quantity <= (item.min_stock_alert || 5);
                                 return (
-                                    <div key={item.id} className="p-5 flex flex-col gap-4 bg-surface active:bg-accent/5 transition-colors">
+                                    <div key={item.id} className="p-4 flex flex-col gap-3 bg-surface active:bg-accent/5 transition-colors">
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.is_pack ? 'bg-void text-white shadow-lg' : 'bg-surface-highlight text-txt-dim border border-panel-border/10'}`}>

@@ -257,10 +257,10 @@ const Ventas = () => {
                     </div>
                 </header>
 
-                {/* Table View */}
+                {/* Table View (Desktop) */}
                 <div className="flex-1 overflow-hidden bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col relative mb-4">
                     <div className="overflow-auto custom-scrollbar flex-1">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
                                 <tr className="bg-gray-50/50 text-txt-primary text-[10px] uppercase font-black tracking-widest border-b border-panel-border/10 sticky top-0 bg-surface z-10 backdrop-blur-md">
                                     <th className="p-4 pl-6">Producto</th>
@@ -397,6 +397,109 @@ const Ventas = () => {
                                 })}
                             </tbody>
                         </table>
+
+                        {/* Mobile Optimized Card View */}
+                        <div className="md:hidden divide-y divide-panel-border/5">
+                            {filteredProducts.map(product => {
+                                const isLowStock = product.quantity <= (product.min_stock_alert || 0);
+                                const inCartUnit = cart[`${product.id}_unit`] > 0;
+                                const inCartPack = Object.keys(cart).some(key => key.startsWith(`${product.id}_pack`));
+                                const inCart = inCartUnit || inCartPack;
+                                const itemInCartCount = Object.entries(cart).reduce((acc, [key, q]) => {
+                                    if (key.startsWith(`${product.id}_`)) return acc + q;
+                                    return acc;
+                                }, 0);
+
+                                return (
+                                    <div key={product.id} className={`p-4 flex flex-col gap-3 ${inCart ? 'bg-accent/5' : ''}`}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${product.is_pack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim'}`}>
+                                                    <span className="material-icons text-lg">{product.is_pack ? 'inventory_2' : 'shopping_basket'}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-black text-txt-primary uppercase tracking-tight line-clamp-1">
+                                                        {product.brand ? `${product.brand} ` : ''}{product.name}
+                                                    </span>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className={`text-[9px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-dim'}`}>
+                                                            Stock: {product.quantity}
+                                                        </span>
+                                                        <span className="text-[9px] font-mono font-black text-accent">
+                                                            {formatMoney(product.selling_price)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {itemInCartCount > 0 && (
+                                                <span className="text-[8px] bg-accent text-void px-2 py-0.5 rounded-full font-black uppercase tracking-widest animate-pulse">
+                                                    En Carrito ({itemInCartCount})
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                            {/* Mobile Unit Button */}
+                                            <button
+                                                onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
+                                                className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-panel-border/10 shadow-sm ${inCartUnit ? 'bg-accent text-void font-black' : 'bg-surface-highlight text-txt-dim'}`}
+                                            >
+                                                <span className="material-icons text-sm">add</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Unidad</span>
+                                            </button>
+
+                                            {/* Mobile Pack Button */}
+                                            {(product.is_pack || (product.formats && product.formats.length > 0)) ? (
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => {
+                                                            if (product.formats?.length > 0 || (product.is_pack && product.pack_size > 1)) {
+                                                                setOpenPackDropdown(openPackDropdown === product.id ? null : product.id);
+                                                            } else {
+                                                                updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default');
+                                                            }
+                                                        }}
+                                                        className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-panel-border/10 shadow-sm ${inCartPack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim'}`}
+                                                    >
+                                                        <span className="material-icons text-sm">{inCartPack ? 'inventory' : 'inventory_2'}</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Pack</span>
+                                                    </button>
+
+                                                    {/* Mobile Dropdown */}
+                                                    {openPackDropdown === product.id && (
+                                                        <div className="absolute bottom-full right-0 mb-2 w-full bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-50 p-2 animate-[fadeIn_0.2s_ease-out]">
+                                                            {product.is_pack && (
+                                                                <button
+                                                                    onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default'); setOpenPackDropdown(null); }}
+                                                                    className="w-full text-left p-3 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1 border-b border-panel-border/5 last:border-0"
+                                                                >
+                                                                    <span className="text-[10px] font-black text-txt-primary uppercase">x{product.pack_size}</span>
+                                                                    <span className="text-[10px] font-mono font-black text-accent">{formatMoney(product.pack_price)}</span>
+                                                                </button>
+                                                            )}
+                                                            {product.formats?.map(fmt => (
+                                                                <button
+                                                                    key={fmt.id}
+                                                                    onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id); setOpenPackDropdown(null); }}
+                                                                    className="w-full text-left p-3 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1 border-b border-panel-border/5 last:border-0"
+                                                                >
+                                                                    <span className="text-[10px] font-black text-txt-primary uppercase">x{fmt.pack_size}</span>
+                                                                    <span className="text-[10px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="py-3 rounded-xl flex items-center justify-center gap-2 bg-gray-50 text-gray-300 border border-gray-100 italic cursor-not-allowed">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest">No Pack</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
