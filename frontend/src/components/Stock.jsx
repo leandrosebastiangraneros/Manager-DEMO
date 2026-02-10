@@ -91,12 +91,6 @@ const Stock = () => {
         return calculatedUnitCost * pSize;
     }, [calculatedUnitCost, packSize]);
 
-    const profitMargin = useMemo(() => {
-        const sellPrice = parseFloat(newItemSellingPrice) || 0;
-        if (!sellPrice || !calculatedUnitCost) return 0;
-        return ((sellPrice - calculatedUnitCost) / calculatedUnitCost) * 100;
-    }, [newItemSellingPrice, calculatedUnitCost]);
-
     const openEditModal = (item) => {
         setIsEditing(true);
         setEditingId(item.id);
@@ -289,7 +283,7 @@ const Stock = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1 uppercase">
-                            Catálogo de <span className="text-accent">Inventario</span>
+                            INVENTARIO <span className="text-accent">ACTUAL</span>
                         </h1>
                         <p className="text-txt-secondary text-xs font-semibold">Configura stock, precios y modalidades de venta.</p>
                     </div>
@@ -351,9 +345,9 @@ const Stock = () => {
 
                             {/* 1. Vincular con existente */}
                             <div className="relative">
-                                <label className="text-[9px] font-black text-txt-primary/70 uppercase tracking-widest block mb-1.5">Vincular con Existente</label>
+                                <label className="text-[9px] font-black text-txt-primary uppercase tracking-widest block mb-1.5">Vincular con Existente</label>
                                 <div className="relative">
-                                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+                                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">search</span>
                                     <input
                                         type="text"
                                         placeholder="Escribe nombre o marca..."
@@ -518,8 +512,7 @@ const Stock = () => {
                                 <tr className="bg-gray-50/70 text-txt-primary text-[10px] uppercase font-black tracking-widest border-b border-panel-border/10 sticky top-0 bg-surface z-20 backdrop-blur-md">
                                     <th className="p-4 pl-8">Producto / Marca</th>
                                     <th className="p-4 text-center">Stock</th>
-                                    <th className="p-4 text-right">Costo Unit.</th>
-                                    <th className="p-4 text-right">Precio Venta</th>
+                                    <th className="p-4 text-right">Variedades y Precios</th>
                                     <th className="p-4 text-center">Estado Lib.</th>
                                     <th className="p-4 text-right pr-8">Acciones</th>
                                 </tr>
@@ -555,12 +548,17 @@ const Stock = () => {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="p-4 text-right font-mono text-[11px] font-bold text-txt-dim">{formatMoney(item.unit_cost)}</td>
                                             <td className="p-4 text-right">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-[14px] font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</span>
-                                                    {(item.pack_price || item.pack_price > 0) && (
-                                                        <span className="text-[9px] text-green-600 font-black uppercase tracking-tighter bg-green-500/10 px-1.5 rounded">Pack: {formatMoney(item.pack_price)}</span>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black text-txt-dim uppercase tracking-tighter">Unitario:</span>
+                                                        <span className="text-[11px] font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</span>
+                                                    </div>
+                                                    {item.is_pack && item.pack_price > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[8px] font-black text-accent uppercase tracking-tighter">Pack x{item.pack_size}:</span>
+                                                            <span className="text-[11px] font-mono font-black text-accent">{formatMoney(item.pack_price)}</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
@@ -606,14 +604,22 @@ const Stock = () => {
                                                 {isLowStock ? 'Alerta' : 'OK'}
                                             </div>
                                         </div>
-                                        <div className="flex justify-between items-center bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
-                                            <div>
-                                                <span className="text-[8px] text-txt-dim uppercase font-black block mb-0.5">En Stock</span>
+                                        <div className="flex flex-col gap-2 bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[8px] text-txt-dim uppercase font-black">Stock Actual</span>
                                                 <div className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
                                             </div>
-                                            <div className="text-right">
-                                                <span className="text-[8px] text-txt-dim uppercase font-black block mb-0.5">Precio Venta</span>
-                                                <div className="text-sm font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</div>
+                                            <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-panel-border/5">
+                                                <div>
+                                                    <span className="text-[7px] text-txt-dim uppercase font-black block">Unitario</span>
+                                                    <div className="text-[10px] font-mono font-black text-txt-primary">{formatMoney(item.selling_price)}</div>
+                                                </div>
+                                                {item.is_pack && item.pack_price > 0 && (
+                                                    <div className="text-right">
+                                                        <span className="text-[7px] text-accent uppercase font-black block">Pack x{item.pack_size}</span>
+                                                        <div className="text-[10px] font-mono font-black text-accent">{formatMoney(item.pack_price)}</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex gap-2 justify-end pt-1">
@@ -648,11 +654,11 @@ const Stock = () => {
                     <form onSubmit={handleEditSubmit} className="p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Nombre Prod.</label>
+                                <label className="text-[10px] font-black text-txt-primary uppercase tracking-widest pl-1">Nombre Prod.</label>
                                 <input type="text" className="w-full p-4 bg-surface-highlight border-2 border-panel-border/10 rounded-2xl outline-none font-bold text-txt-primary focus:border-accent shadow-sm" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Marca / Fabricante</label>
+                                <label className="text-[10px] font-black text-txt-primary uppercase tracking-widest pl-1">Marca / Fabricante</label>
                                 <input type="text" className="w-full p-4 bg-surface-highlight border-2 border-panel-border/10 rounded-2xl outline-none font-bold text-txt-primary focus:border-accent shadow-sm" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
                             </div>
                         </div>
@@ -674,14 +680,14 @@ const Stock = () => {
 
                         <div className="grid grid-cols-2 gap-6 pt-4 border-t border-panel-border/10">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Alerta Stock Bajo</label>
+                                <label className="text-[10px] font-black text-txt-primary uppercase tracking-widest pl-1">Alerta Stock Bajo</label>
                                 <div className="relative">
                                     <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">warning</span>
                                     <input type="number" className="w-full p-4 pl-12 bg-surface-highlight border-2 border-orange-500/20 text-orange-600 rounded-2xl outline-none font-mono font-black" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Categoría</label>
+                                <label className="text-[10px] font-black text-txt-primary uppercase tracking-widest pl-1">Categoría</label>
                                 <select className="w-full p-4 bg-surface-highlight border-2 border-panel-border/10 rounded-2xl outline-none font-bold text-txt-primary focus:border-accent" value={newItemCategoryId} onChange={e => setNewItemCategoryId(e.target.value)}>
                                     <option value="">Sin Categorizar</option>
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -713,16 +719,16 @@ const Stock = () => {
                     <form onSubmit={handleSellSubmit} className="space-y-8">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Cantidad</label>
+                                <label className="text-[9px] font-black text-txt-primary uppercase tracking-widest pl-1">Cantidad</label>
                                 <input type="number" className="w-full p-5 bg-surface-highlight border-2 border-panel-border/10 rounded-2xl outline-none font-mono text-center text-2xl font-black text-txt-primary focus:border-accent shadow-inner" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Precio Final</label>
+                                <label className="text-[9px] font-black text-txt-primary uppercase tracking-widest pl-1">Precio Final</label>
                                 <input type="number" className="w-full p-5 bg-surface-highlight border-2 border-green-500/20 rounded-2xl outline-none font-mono text-center text-green-600 font-black text-2xl focus:border-green-500 shadow-inner" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-txt-primary/60 uppercase tracking-widest pl-1">Notas</label>
+                            <label className="text-[9px] font-black text-txt-primary uppercase tracking-widest pl-1">Notas</label>
                             <textarea className="w-full p-5 bg-surface-highlight border-2 border-panel-border/10 rounded-2xl outline-none h-20 text-sm resize-none font-medium text-txt-primary focus:border-accent shadow-inner" value={workDesc} onChange={e => setWorkDesc(e.target.value)} required placeholder="Notas de la operación..." />
                         </div>
                         <div className="pt-2 flex gap-4">
