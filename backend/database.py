@@ -7,10 +7,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL")
+# Priority:
+# 1. POSTGRES_PRISMA_URL (Neon/Vercel optimized with timeouts)
+# 2. POSTGRES_URL_NON_POOLING (Direct connection)
+# 3. POSTGRES_URL (Standard Vercel Env)
+# 4. DATABASE_URL (Generic)
+# 5. SQLite Fallback (Local)
 
+SQLALCHEMY_DATABASE_URL = (
+    os.getenv("POSTGRES_PRISMA_URL") or 
+    os.getenv("POSTGRES_URL_NON_POOLING") or 
+    os.getenv("POSTGRES_URL") or 
+    os.getenv("DATABASE_URL")
+)
+
+# Vercel/Render fallback to SQLite if no DB string found
 if not SQLALCHEMY_DATABASE_URL:
-    # Si estamos en Vercel, usar /tmp para el SQLite de prueba
     if os.getenv("VERCEL"):
         SQLALCHEMY_DATABASE_URL = "sqlite:////tmp/novamanager.db"
     else:
@@ -21,7 +33,7 @@ if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://")
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 connect_args = {}
-if SQLALCHEMY_DATABASE_URL and "sqlite" in SQLALCHEMY_DATABASE_URL:
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
     connect_args = {"check_same_thread": False}
 
 engine = create_engine(
