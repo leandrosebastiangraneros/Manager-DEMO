@@ -32,6 +32,10 @@ if not SQLALCHEMY_DATABASE_URL:
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# Fix for Supabase 'pgbouncer=true' parameter which crashes psycopg2
+if "pgbouncer=true" in SQLALCHEMY_DATABASE_URL:
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+
 connect_args = {}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
     connect_args = {"check_same_thread": False}
