@@ -9,11 +9,7 @@ import os
 import shutil
 import traceback
 
-# PDF Reporting (ReportLab)
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+# PDF Reporting (ReportLab) - Loaded lazily inside function to clear Vercel cache
 
 import models
 import schemas
@@ -383,6 +379,12 @@ def get_financial_summary(month: int = None, year: int = None, db: Session = Dep
 # --- PDF REPORTS ---
 @app.get("/reports/accounting/pdf")
 def generate_accounting_report(month: int, year: int, db: Session = Depends(get_db)):
+    # Lazy Import ReportLab to speed up cold starts
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+
     start_date = datetime(year, month, 1)
     end_date = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
     
