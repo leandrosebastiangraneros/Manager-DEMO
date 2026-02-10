@@ -23,8 +23,19 @@ except Exception as e_main:
     # 3. Emergency App if Main Fails
     app = FastAPI(title="Emergency Failover")
     
+    @app.get("/api/health")
+    def health_explicit():
+        return emergency_status()
+
+    @app.get("/health")
+    def health():
+        return emergency_status()
+    
     @app.get("/{path:path}")
     def catch_all(path: str):
+        return emergency_status()
+        
+    def emergency_status():
         return {
             "status": "CRITICAL_BOOT_ERROR", 
             "detail": "Failed to import 'main' from 'backend'.",

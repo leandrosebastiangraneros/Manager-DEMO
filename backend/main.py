@@ -35,6 +35,13 @@ app = FastAPI(title="NovaManager Commercial - API", root_path=root_path)
 # --- HEALTH CHECK ---
 @app.get("/health")
 def health_check():
+    return perform_health_check()
+
+@app.get("/api/health")
+def health_check_explicit():
+    return perform_health_check()
+
+def perform_health_check():
     # Diagnostic Info
     from database import SQLALCHEMY_DATABASE_URL
     
@@ -43,11 +50,14 @@ def health_check():
     elif "postgres" in SQLALCHEMY_DATABASE_URL: db_type = "POSTGRES (Neon/Vercel)"
     
     # Masked URL
-    masked_url = SQLALCHEMY_DATABASE_URL
+    masked_url = str(SQLALCHEMY_DATABASE_URL)
     if "@" in masked_url:
-        part1 = masked_url.split("@")[0]
-        part2 = masked_url.split("@")[1]
-        masked_url = f"{part1[:15]}...@{part2}"
+        try:
+            part1 = masked_url.split("@")[0]
+            part2 = masked_url.split("@")[1]
+            masked_url = f"{part1[:15]}...@{part2}"
+        except:
+            pass
         
     env_vars = {
         "POSTGRES_PRISMA_URL": "SET" if os.getenv("POSTGRES_PRISMA_URL") else "MISSING",
@@ -61,7 +71,7 @@ def health_check():
     try:
         # Intentar conectar
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(func.text("SELECT 1"))
         db.close()
         return {
             "status": "ONLINE", 
