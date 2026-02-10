@@ -1,4 +1,4 @@
-supabase
+httpx
 fastapi
 uvicorn
 python-multipart
