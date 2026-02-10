@@ -69,10 +69,8 @@ const Ventas = () => {
         }
 
         setCart(prev => {
-            if (newQty <= 0) {
-                const { [productId]: _, ...rest } = prev;
-                return rest;
-            }
+            // Permitimos que el valor sea 0 o vacío momentáneamente sin borrar el ítem
+            // El borrado real se hace con el botón 'delete'
             return { ...prev, [productId]: newQty };
         });
     };

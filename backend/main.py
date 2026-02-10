@@ -148,42 +148,30 @@ def read_stock():
 
 @app.post("/stock", response_model=schemas.StockItem)
 def create_stock_item(item: schemas.StockItemCreate):
-    # 1. Look up Expense Category (Flexible)
+    # This is now a simple wrapper or we can keep it as is.
+    # We'll keep the logic here for single item addition.
     cat_id = None
     try:
         cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
-        if cat_res.data:
-            cat_id = cat_res.data["id"]
-    except:
-        pass
+        if cat_res.data: cat_id = cat_res.data["id"]
+    except: pass
 
-    # 2. Create Purchase Transaction (Expense)
-    purchase_tx_id = None
-    try:
-        tx_data = {
-            "date": datetime.now().isoformat(),
-            "amount": item.cost_amount,
-            "description": f"Compra Stock: {item.name}",
-            "type": "EXPENSE",
-            "category_id": cat_id
-        }
-        tx_res = supabase.table("transactions").insert(tx_data).execute()
-        if tx_res.data:
-            purchase_tx_id = tx_res.data[0]["id"]
-    except Exception as tx_err:
-        logger.warning(f"Could not create transaction for stock item: {tx_err}")
-    
-    # 3. Create Stock Item
+    tx_data = {
+        "date": datetime.now().isoformat(),
+        "amount": item.cost_amount,
+        "description": f"Compra Stock: {item.name}",
+        "type": "EXPENSE",
+        "category_id": cat_id
+    }
+    tx_res = supabase.table("transactions").insert(tx_data).execute()
+    purchase_tx_id = tx_res.data[0]["id"] if tx_res.data else None
+
     stock_data = item.model_dump()
     stock_data["purchase_tx_id"] = purchase_tx_id
     stock_data["purchase_date"] = datetime.now().isoformat()
     stock_data["quantity"] = stock_data["initial_quantity"]
     stock_data["status"] = "AVAILABLE"
-    
-    # Clean payload (Exclude Generated Column)
     stock_data.pop("unit_cost", None)
-    
-    # Fixed: Only set category_id if it's not 0 or null
     if not stock_data.get("category_id") or stock_data.get("category_id") == 0:
         stock_data["category_id"] = None
 
@@ -191,16 +179,99 @@ def create_stock_item(item: schemas.StockItemCreate):
     if not stock_res.data:
         raise HTTPException(status_code=400, detail="Failed to create stock item")
     
-    # LOG MOVEMENT
-    brand_info = f" [{item.brand}]" if item.brand else ""
-    pack_info = f" (Pack x{item.pack_size})" if item.is_pack else ""
-    log_movement(
-        "STOCK", "ALTA", 
-        f"Ingreso: {item.name}{brand_info}{pack_info} - {item.initial_quantity} unidades",
-        {"product_id": stock_res.data[0]["id"], "qty": item.initial_quantity}
-    )
-    
+    log_movement("STOCK", "ALTA", f"Ingreso: {item.name}", {"id": stock_res.data[0]["id"]})
     return stock_res.data[0]
+
+@app.post("/stock/batch")
+def create_batch_stock(batch: schemas.BatchStockRequest):
+    # 1. Get Expense Category
+    cat_id = None
+    try:
+        cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
+        if cat_res.data: cat_id = cat_res.data["id"]
+    except: pass
+
+    processed = []
+    for item in batch.items:
+        if item.item_id:
+            # --- REPLENISHMENT ---
+            res = supabase.table("stock_items").select("*").eq("id", item.item_id).single().execute()
+            if not res.data: continue
+            
+            existing = res.data
+            # Calculate new quantity (if it was pack, we multiply by size)
+            add_qty = item.quantity * (item.pack_size if item.is_pack else 1)
+            new_total_qty = existing["quantity"] + add_qty
+            
+            # Calculate new Weighted Average Cost
+            current_unit_cost = existing.get("unit_cost") or 0
+            total_inventory_value = (existing["quantity"] * current_unit_cost) + item.cost_amount
+            new_unit_cost = total_inventory_value / new_total_qty if new_total_qty > 0 else 0
+
+            # Update Existing Item
+            update_data = {
+                "quantity": new_total_qty,
+                "unit_cost": new_unit_cost,
+                "status": "AVAILABLE"
+            }
+            if item.selling_price:
+                update_data["selling_price"] = item.selling_price
+            
+            supabase.table("stock_items").update(update_data).eq("id", item.item_id).execute()
+            
+            # Create Expense Transaction
+            tx_data = {
+                "date": datetime.now().isoformat(),
+                "amount": item.cost_amount,
+                "description": f"Reposición: {existing['name']}" + (f" [{item.brand}]" if item.brand else ""),
+                "type": "EXPENSE",
+                "category_id": cat_id
+            }
+            supabase.table("transactions").insert(tx_data).execute()
+            
+            log_movement(
+                "STOCK", "REPOSICION", 
+                f"Reposición: {existing['name']} (+{add_qty} unidades)",
+                {"product_id": item.item_id, "added": add_qty}
+            )
+            processed.append({"id": item.item_id, "name": existing["name"], "status": "replenished"})
+            
+        else:
+            # --- NEW PRODUCT ---
+            # Create Purchase Transaction
+            tx_data = {
+                "date": datetime.now().isoformat(),
+                "amount": item.cost_amount,
+                "description": f"Compra Stock: {item.name}",
+                "type": "EXPENSE",
+                "category_id": cat_id
+            }
+            tx_res = supabase.table("transactions").insert(tx_data).execute()
+            purchase_tx_id = tx_res.data[0]["id"] if tx_res.data else None
+            
+            stock_data = item.model_dump()
+            stock_data["purchase_tx_id"] = purchase_tx_id
+            stock_data["purchase_date"] = datetime.now().isoformat()
+            # quantity is initial_quantity in the base sense
+            total_initial = item.quantity * (item.pack_size if item.is_pack else 1)
+            stock_data["initial_quantity"] = total_initial
+            stock_data["quantity"] = total_initial
+            stock_data["status"] = "AVAILABLE"
+            
+            # Unit cost calculation for the record
+            # cost_amount / initial_quantity
+            stock_data["unit_cost"] = item.cost_amount / total_initial if total_initial > 0 else 0
+            
+            stock_res = supabase.table("stock_items").insert(stock_data).execute()
+            if stock_res.data:
+                log_movement(
+                    "STOCK", "ALTA", 
+                    f"Ingreso (Batch): {item.name} ({total_initial} unidades)",
+                    {"product_id": stock_res.data[0]["id"], "qty": total_initial}
+                )
+                processed.append({"id": stock_res.data[0]["id"], "name": item.name, "status": "created"})
+
+    return {"status": "success", "processed": processed}
 
 @app.put("/stock/{item_id}", response_model=schemas.StockItem)
 def update_stock_item(item_id: int, item: schemas.StockItemCreate):

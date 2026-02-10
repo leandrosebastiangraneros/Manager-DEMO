@@ -4,7 +4,7 @@ import { API_URL } from '../config';
 import GlassContainer from './common/GlassContainer';
 
 const Dashboard = () => {
-    const [finances, setFinances] = useState({ income: 0, expenses: 0, balance: 0, month: '...', chart_data: [] });
+    const [finances, setFinances] = useState({ income: 0, expenses: 0, balance: 0, month: '...', chart_data: [], recent_sales: [] });
     const [stockAlerts, setStockAlerts] = useState([]);
     const [activityFeed, setActivityFeed] = useState([]);
     const [systemHealth, setSystemHealth] = useState({ latency: 0, status: 'ONLINE', db: 'CONNECTED' });

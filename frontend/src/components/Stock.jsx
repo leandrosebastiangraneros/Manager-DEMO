@@ -23,11 +23,17 @@ const Stock = () => {
     const [newItemBrand, setNewItemBrand] = useState('');
     const [isPack, setIsPack] = useState(false);
     const [packSize, setPackSize] = useState('1');
-    const [newItemCost, setNewItemCost] = useState(''); // This will be "Cost por Pack" or "Costo Total"
+    const [newItemCost, setNewItemCost] = useState('');
     const [newItemQuantity, setNewItemQuantity] = useState('1');
     const [newItemSellingPrice, setNewItemSellingPrice] = useState('');
     const [newItemCategoryId, setNewItemCategoryId] = useState('');
     const [categories, setCategories] = useState([]);
+    const [draftItems, setDraftItems] = useState([]);
+    const [isSavingBatch, setIsSavingBatch] = useState(false);
+
+    // Search/Selection for Replenishment
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedExisting, setSelectedExisting] = useState(null);
 
     // Form State for Sell
     const [sellPriceUnit, setSellPriceUnit] = useState('');
@@ -35,42 +41,24 @@ const Stock = () => {
     const [workDesc, setWorkDesc] = useState('');
 
     const fetchStock = () => {
-        // Optimistic Load
-        const cached = localStorage.getItem('stock_items');
-        if (cached && loading) {
-            setItems(JSON.parse(cached));
-            setLoading(false);
-        }
-
+        setLoading(true);
         fetch(`${API_URL}/stock`)
             .then(res => res.json())
             .then(data => {
-                const safeData = Array.isArray(data) ? data : [];
-                setItems(safeData);
-                localStorage.setItem('stock_items', JSON.stringify(safeData));
+                setItems(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Error stock:", err);
-                if (!cached) setItems([]);
+                setItems([]);
                 setLoading(false);
             });
     };
 
     const fetchCategories = () => {
-        // Optimistic Load
-        const cached = localStorage.getItem('stock_categories');
-        if (cached) {
-            setCategories(JSON.parse(cached));
-        }
-
         fetch(`${API_URL}/categories`)
             .then(res => res.json())
-            .then(data => {
-                const safeData = Array.isArray(data) ? data : [];
-                setCategories(safeData);
-                localStorage.setItem('stock_categories', JSON.stringify(safeData));
-            })
+            .then(data => setCategories(Array.isArray(data) ? data : []))
             .catch(err => console.error("Error cats:", err));
     };
 
@@ -79,40 +67,99 @@ const Stock = () => {
         fetchCategories();
     }, []);
 
-    const openAddModal = () => {
-        setIsEditing(false);
-        setEditingId(null);
-        setNewItemName('');
-        setNewItemBrand('');
-        setIsPack(false);
-        setPackSize('1');
-        setNewItemCost('');
-        setNewItemQuantity('1');
-        setNewItemSellingPrice('');
-        setNewItemCategoryId('');
-        setIsAddModalOpen(true);
-    };
-
     const openEditModal = (item) => {
         setIsEditing(true);
         setEditingId(item.id);
         setNewItemName(item.name);
-        setNewItemCost(item.cost_amount);
-        setNewItemQuantity(item.initial_quantity);
+        setNewItemBrand(item.brand || '');
+        setNewItemCost(item.unit_cost); // O el costo que prefieras mostrar al editar
+        setNewItemQuantity(item.quantity);
         setNewItemSellingPrice(item.selling_price);
         setNewItemCategoryId(item.category_id || '');
+        setIsPack(false);
+        setPackSize('1');
         setIsAddModalOpen(true);
     };
 
-    const handleAddSubmit = (e) => {
+    const addToDraft = (e) => {
         e.preventDefault();
         const cost = parseFloat(newItemCost);
         const qty = parseFloat(newItemQuantity);
         const sellPrice = parseFloat(newItemSellingPrice);
+
         if (!newItemName || isNaN(cost) || isNaN(qty) || isNaN(sellPrice)) {
-            showAlert("Por favor completa todos los campos correctamente.", "error");
+            showAlert("Completa los datos del producto", "error");
             return;
         }
+
+        const draftItem = {
+            item_id: selectedExisting ? selectedExisting.id : null,
+            name: newItemName,
+            brand: newItemBrand,
+            is_pack: isPack,
+            pack_size: parseFloat(packSize),
+            cost_amount: cost,
+            quantity: qty,
+            selling_price: sellPrice,
+            category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
+        };
+
+        setDraftItems([...draftItems, draftItem]);
+
+        // Reset form for next item
+        setNewItemName('');
+        setNewItemBrand('');
+        setNewItemCost('');
+        setNewItemQuantity('1');
+        setNewItemSellingPrice('');
+        setSelectedExisting(null);
+        setSearchTerm('');
+    };
+
+    const removeItemFromDraft = (index) => {
+        setDraftItems(draftItems.filter((_, i) => i !== index));
+    };
+
+    const handleSaveBatch = async () => {
+        if (draftItems.length === 0) return;
+        setIsSavingBatch(true);
+        try {
+            const res = await fetch(`${API_URL}/stock/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: draftItems })
+            });
+            if (res.ok) {
+                showAlert("Inventario actualizado con éxito", "success");
+                setDraftItems([]);
+                fetchStock();
+            } else {
+                const err = await res.json();
+                showAlert("Error: " + err.detail, "error");
+            }
+        } catch (err) {
+            showAlert("Error de conexión", "error");
+        } finally {
+            setIsSavingBatch(false);
+        }
+    };
+
+    const handleSelectExisting = (item) => {
+        setSelectedExisting(item);
+        setNewItemName(item.name);
+        setNewItemBrand(item.brand || '');
+        setNewItemSellingPrice(item.selling_price || '');
+        setNewItemCategoryId(item.category_id || '');
+        setIsPack(false);
+        setPackSize('1');
+        setSearchTerm('');
+    };
+
+    const handleEditSubmit = (e) => {
+        e.preventDefault();
+        const cost = parseFloat(newItemCost);
+        const qty = parseFloat(newItemQuantity);
+        const sellPrice = parseFloat(newItemSellingPrice);
 
         const payload = {
             name: newItemName,
@@ -125,32 +172,23 @@ const Stock = () => {
             category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
         };
 
-        const method = isEditing ? 'PUT' : 'POST';
-        const url = isEditing ? `${API_URL}/stock/${editingId}` : `${API_URL}/stock`;
-
-        fetch(url, {
-            method: method,
+        fetch(`${API_URL}/stock/${editingId}`, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-            .then(res => {
-                if (!res.ok) return res.json().then(err => { throw new Error(err.detail || "Error al guardar") });
-                return res.json();
-            })
+            .then(res => res.json())
             .then(() => {
                 fetchStock();
                 setIsAddModalOpen(false);
-                showAlert(isEditing ? "Producto actualizado" : "Producto agregado correctamente", "success");
+                showAlert("Producto actualizado", "success");
             })
-            .catch(err => {
-                console.error("Error stock save:", err);
-                showAlert("Error: " + err.message, "error");
-            });
+            .catch(err => showAlert("Error al editar: " + err.message, "error"));
     };
 
     const handleSellClick = (item) => {
         setSelectedItem(item);
-        setSellPriceUnit('');
+        setSellPriceUnit(item.selling_price || '');
         setSellQuantity('1');
         setWorkDesc('');
         setIsSellModalOpen(true);
@@ -176,7 +214,7 @@ const Stock = () => {
             body: JSON.stringify({ sale_price_unit: priceUnit, quantity: qty, work_description: workDesc })
         })
             .then(res => {
-                if (!res.ok) throw new Error("Error selling");
+                if (!res.ok) throw new Error("Error en la venta");
                 return res.json();
             })
             .then(() => {
@@ -200,423 +238,297 @@ const Stock = () => {
     );
 
     return (
-        <div className="space-y-8 pb-20 animate-[fadeIn_0.5s_ease-out]">
-            <header className="flex justify-between items-end mb-8">
-                <div>
-                    <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-2">
-                        Inventario
-                    </h1>
-                    <p className="text-gray-500 text-sm font-medium">
-                        Gestión de stock, precios y control de mercadería.
-                    </p>
-                </div>
-                <Button
-                    variant="primary"
-                    onClick={openAddModal}
-                    icon={<span className="material-icons">add</span>}
-                    className="shadow-lg shadow-black/20 hover:shadow-xl hover:-translate-y-0.5 transition-all rounded-xl"
-                >
-                    Nuevo Producto
-                </Button>
+        <div className="space-y-8 pb-32 animate-[fadeIn_0.5s_ease-out]">
+            <header className="mb-4">
+                <h1 className="text-3xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1">
+                    Gestión de Inventario
+                </h1>
+                <p className="text-gray-500 text-sm font-medium">Panel unificado de carga y control de existencias.</p>
             </header>
 
-            {/* Desktop View grouped by Category */}
-            <div className="hidden md:block space-y-8">
-                {[...categories, { id: null, name: 'Sin Categoría' }].map(category => {
-                    const categoryItems = items.filter(item => item.category_id === category.id);
-                    if (categoryItems.length === 0) return null;
-
-                    return (
-                        <div key={category.id || 'none'} className="space-y-3">
-                            <h2 className="text-txt-dim font-bold text-xs uppercase tracking-wider flex items-center gap-3 pl-1 mb-4 border-b border-panel-border pb-2">
-                                <span className="material-icons text-sm">category</span>
-                                {category.name}
-                                <span className="text-[10px] bg-surface-highlight text-txt-primary px-2 py-0.5 rounded-full border border-panel-border">{categoryItems.length} items</span>
-                            </h2>
-
-                            <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-surface-highlight/30 text-txt-dim text-xs font-bold tracking-wider border-b border-gray-100/10">
-                                            <th className="p-4 font-medium pl-6">Producto</th>
-                                            <th className="p-4 text-center font-medium">Stock</th>
-                                            <th className="p-4 text-right font-medium">Costo</th>
-                                            <th className="p-4 text-right font-medium">Venta</th>
-                                            <th className="p-4 text-right font-medium">Margen</th>
-                                            <th className="p-4 text-center font-medium">Estado</th>
-                                            <th className="p-4 text-center font-medium pr-6">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {categoryItems.map(item => (
-                                            <tr key={item.id} className="hover:bg-surface-highlight/10 transition-colors group">
-                                                <td className="p-4 pl-6">
-                                                    <div className="font-bold text-txt-primary mb-0.5">{item.name}</div>
-                                                    <div className="text-[10px] text-gray-400 font-mono">ID: {item.id.toString().padStart(4, '0')}</div>
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${item.quantity > 0 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                                                        {item.quantity}
-                                                        <span className="text-[9px] text-gray-400 ml-1 font-normal">/ {item.initial_quantity}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 text-right text-gray-400 font-mono text-sm">{formatMoney(item.unit_cost)}</td>
-                                                <td className="p-4 text-right text-txt-primary font-mono font-bold text-sm bg-surface-highlight/10">{formatMoney(item.selling_price)}</td>
-                                                <td className="p-4 text-right font-mono font-bold text-sm text-green-600">
-                                                    {formatMoney(item.selling_price - item.unit_cost)}
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    {(() => {
-                                                        let statusConfig = { color: 'bg-green-500/10 text-green-500 border-green-500/20', text: 'En Stock' };
-                                                        if (item.quantity === 0) statusConfig = { color: 'bg-red-500/10 text-red-500 border-red-500/20', text: 'Agotado' };
-                                                        else if (item.quantity <= 5) statusConfig = { color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', text: 'Poco Stock' };
-
-                                                        return (
-                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusConfig.color} inline-block min-w-[80px]`}>
-                                                                {statusConfig.text}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td className="p-4 text-center pr-6">
-                                                    <div className="flex gap-2 justify-center">
-                                                        <button
-                                                            onClick={() => openEditModal(item)}
-                                                            className="p-1.5 text-txt-dim hover:bg-surface-highlight hover:text-txt-primary rounded-lg transition-all"
-                                                            title="Editar"
-                                                        >
-                                                            <span className="material-icons text-sm">edit</span>
-                                                        </button>
-                                                        {item.status === 'AVAILABLE' && (
-                                                            <button
-                                                                onClick={() => handleSellClick(item)}
-                                                                className="p-1.5 text-txt-dim hover:bg-green-500/10 hover:text-green-500 rounded-lg transition-all"
-                                                                title="Vender"
-                                                            >
-                                                                <span className="material-icons text-sm">shopping_cart</span>
-                                                            </button>
-                                                        )}
-                                                    </div>
-
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                {/* Panel de Carga */}
+                <div className="xl:col-span-1 space-y-6">
+                    <GlassContainer className="p-6 border-panel-border relative overflow-visible">
+                        <div className="flex items-center gap-2 mb-6">
+                            <span className="material-icons text-void">app_registration</span>
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-void">Ingreso de Mercadería</h2>
                         </div>
-                    );
-                })}
-            </div >
 
-            {/* Mobile Cards View */}
-            < div className="md:hidden space-y-4" >
-                {
-                    items.length === 0 ? (
-                        <div className="text-center text-gray-400 p-8 text-sm">Inventario Vacío</div>
-                    ) : (
-                        items.map(item => (
-                            <div key={item.id} className="p-5 bg-surface rounded-xl shadow-sm border border-gray-100/10 relative overflow-hidden">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="text-base font-bold text-txt-primary mb-1">{item.name}</h3>
-                                        <p className="text-[10px] text-gray-400 font-mono">Costo: {formatMoney(item.unit_cost)}</p>
-                                    </div>
-                                    <StatusBadge status={item.status === 'AVAILABLE' ? 'En Stock' : 'Agotado'} />
+                        <form onSubmit={addToDraft} className="space-y-4">
+                            <div className="relative">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">¿Producto Existente?</label>
+                                <div className="relative group">
+                                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar para reponer..."
+                                        className="w-full pl-9 pr-4 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none focus:border-void transition-all"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                    />
+                                    {searchTerm && (
+                                        <div className="absolute top-full left-0 w-full bg-white border border-panel-border rounded-xl shadow-2xl z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar">
+                                            {items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(i => (
+                                                <button
+                                                    key={i.id}
+                                                    type="button"
+                                                    onClick={() => handleSelectExisting(i)}
+                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-xs border-b border-gray-50 last:border-0"
+                                                >
+                                                    <div className="font-bold">{i.name} {i.brand && <span className="text-gray-400 font-normal">({i.brand})</span>}</div>
+                                                    <div className="text-[10px] text-gray-400">Stock actual: {i.quantity} | {formatMoney(i.selling_price)}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-4 bg-surface-highlight/10 p-3 rounded-lg border border-gray-100/10">
-                                    <div className="text-center">
-                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Stock</span>
-                                        <span className={`text-lg font-mono font-bold ${item.quantity > 0 ? 'text-txt-primary' : 'text-red-500'}`}>
-                                            {item.quantity}
-                                        </span>
-                                    </div>
-                                    <div className="text-center border-l border-gray-200">
-                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Monto Total</span>
-                                        <span className="text-lg font-mono font-bold text-txt-primary">
-                                            {formatMoney(item.cost_amount)}
-                                        </span>
-                                    </div>
+                            {selectedExisting && (
+                                <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex justify-between items-center animate-fadeIn">
+                                    <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.name}</span>
+                                    <button type="button" onClick={() => setSelectedExisting(null)} className="text-green-800"><span className="material-icons text-xs">close</span></button>
                                 </div>
+                            )}
 
-                                {item.status === 'AVAILABLE' && (
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full rounded-lg border border-gray-200 text-gray-700 hover:bg-black hover:text-white"
-                                        onClick={() => handleSellClick(item)}
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nombre del Producto</label>
+                                <input
+                                    type="text"
+                                    placeholder="Nombre"
+                                    className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none"
+                                    value={newItemName}
+                                    onChange={e => setNewItemName(e.target.value)}
+                                    required
+                                    disabled={!!selectedExisting}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Formato</label>
+                                    <select
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none"
+                                        value={isPack}
+                                        onChange={e => setIsPack(e.target.value === 'true')}
                                     >
-                                        REGISTRAR SALIDA
-                                    </Button>
+                                        <option value="false">Individual</option>
+                                        <option value="true">Pack / Bulto</option>
+                                    </select>
+                                </div>
+                                {isPack && (
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Unid x Pack</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono"
+                                            value={packSize}
+                                            onChange={e => setPackSize(e.target.value)}
+                                        />
+                                    </div>
                                 )}
                             </div>
-                        ))
-                    )
-                }
-            </div >
 
-            {/* Add Modal */}
-            < Modal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                className="max-w-xl bg-surface rounded-2xl shadow-2xl border border-gray-100/10 p-0 overflow-hidden"
-            >
-                <div className="bg-surface px-6 py-4 border-b border-gray-100/10 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-txt-primary flex items-center gap-2">
-                        <span className="material-icons text-gray-400">add_box</span>
-                        Nuevo Producto
-                    </h2>
-                </div>
-
-                <form onSubmit={handleAddSubmit} className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Marca</label>
-                            <input
-                                type="text"
-                                style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary transition-all"
-                                placeholder="ej. Quilmes / Pepsi"
-                                value={newItemBrand}
-                                onChange={e => setNewItemBrand(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre del Producto</label>
-                            <input
-                                type="text"
-                                style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary transition-all"
-                                placeholder="ej. Cerveza Lata 473ml"
-                                value={newItemName}
-                                onChange={e => setNewItemName(e.target.value)}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
-                            <select
-                                style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary appearance-none"
-                                value={newItemCategoryId}
-                                onChange={e => setNewItemCategoryId(e.target.value)}
-                            >
-                                <option value="">-- Sin Categoría --</option>
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Formato de Ingreso</label>
-                            <div className="flex bg-surface-highlight rounded-xl p-1 border border-panel-border">
-                                <button
-                                    type="button"
-                                    onClick={() => { setIsPack(false); setPackSize('1'); }}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isPack ? 'bg-black text-white shadow-sm' : 'text-txt-dim'}`}
-                                >INDIVIDUAL</button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPack(true)}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isPack ? 'bg-black text-white shadow-sm' : 'text-txt-dim'}`}
-                                >PACK / BULTO</button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{isPack ? 'Cant. Packs' : 'Cantidad'}</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono"
+                                        value={newItemQuantity}
+                                        onChange={e => setNewItemQuantity(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Costo de Carga</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono"
+                                        value={newItemCost}
+                                        onChange={e => setNewItemCost(e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {isPack && (
                             <div>
-                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Unid. x Pack</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Venta Sug. Unit.</label>
                                 <input
                                     type="number"
-                                    style={{ height: '50px' }}
-                                    className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
-                                    value={packSize}
-                                    onChange={e => setPackSize(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        )}
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">{isPack ? 'Cant. Packs' : 'Cantidad'}</label>
-                            <input
-                                type="number"
-                                style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
-                                value={newItemQuantity}
-                                onChange={e => setNewItemQuantity(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className={isPack ? 'col-span-1' : 'col-span-1'}>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">{isPack ? 'Costo x Pack' : 'Costo Total'}</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                                <input
-                                    type="number"
-                                    style={{ height: '50px' }}
-                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
-                                    placeholder="0.00"
-                                    value={newItemCost}
-                                    onChange={e => setNewItemCost(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Venta (Unid)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
-                                <input
-                                    type="number"
-                                    style={{ height: '50px' }}
-                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 outline-none text-txt-primary font-mono"
-                                    placeholder="0.00"
+                                    className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono text-green-600 font-bold"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}
                                     required
                                 />
                             </div>
+
+                            <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-sm bg-void text-white">
+                                AGREGAR A LA LISTA
+                            </Button>
+                        </form>
+                    </GlassContainer>
+                </div>
+
+                {/* Draft List & Inventory */}
+                <div className="xl:col-span-3 space-y-8">
+                    {/* Draft Area */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-[10px] font-mono font-bold uppercase tracking-widest text-txt-dim">Draft de Ingreso ({draftItems.length})</h2>
+                            {draftItems.length > 0 && (
+                                <Button variant="primary" onClick={handleSaveBatch} disabled={isSavingBatch}>
+                                    {isSavingBatch ? 'GUARDANDO...' : 'CONFIRMAR CARGA'}
+                                </Button>
+                            )}
                         </div>
+
+                        {draftItems.length === 0 ? (
+                            <div className="border-2 border-dashed border-gray-200 rounded-3xl h-[120px] flex flex-col items-center justify-center text-gray-300">
+                                <p className="text-[10px] font-mono uppercase tracking-widest">Lista vacía</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {draftItems.map((item, idx) => (
+                                    <div key={idx} className="bg-surface p-4 rounded-xl border border-panel-border shadow-sm flex flex-col justify-between relative">
+                                        <button onClick={() => removeItemFromDraft(idx)} className="absolute top-2 right-2 text-gray-300 hover:text-red-500"><span className="material-icons text-sm">cancel</span></button>
+                                        <div>
+                                            <div className="text-[9px] font-mono text-txt-dim uppercase">{item.item_id ? 'REPOSICIÓN' : 'NUEVO'}</div>
+                                            <div className="font-bold text-sm truncate">{item.name}</div>
+                                            <div className="text-[10px] text-gray-400 font-mono italic">x{item.quantity} {item.is_pack ? `packs` : `unid.`}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {(newItemQuantity > 0 && newItemCost > 0) && (
-                        <div className="bg-surface-highlight/20 p-4 rounded-xl border border-panel-border/30 flex justify-around text-center">
-                            <div>
-                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Unidades Totales</span>
-                                <span className="text-sm font-bold font-mono">{parseFloat(newItemQuantity) * (isPack ? parseFloat(packSize) : 1)}</span>
-                            </div>
-                            <div className="border-x border-panel-border/10 px-8">
-                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Inversión Total</span>
-                                <span className="text-sm font-bold font-mono">{formatMoney(parseFloat(newItemCost) * (isPack ? parseFloat(newItemQuantity) : 1))}</span>
-                            </div>
-                            <div>
-                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Costo Unitario</span>
-                                <span className="text-sm font-bold font-mono text-green-600">
-                                    {formatMoney((parseFloat(newItemCost) * (isPack ? parseFloat(newItemQuantity) : 1)) / (parseFloat(newItemQuantity) * (isPack ? parseFloat(packSize) : 1)))}
-                                </span>
-                            </div>
+                    {/* Inventory List */}
+                    <div className="space-y-6 pt-4">
+                        <div className="flex items-center gap-2">
+                            <span className="material-icons text-gray-400">inventory</span>
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-txt-dim">Inventario Actual</h2>
                         </div>
-                    )}
 
-                    <div className="flex gap-4 pt-4 border-t border-gray-100">
-                        <Button variant="ghost" onClick={() => setIsAddModalOpen(false)} className="flex-1 text-gray-500 hover:text-black hover:bg-gray-100">Cancelar</Button>
-                        <Button type="submit" variant="primary" className="flex-1 shadow-lg shadow-black/20">Confirmar Agregado</Button>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block bg-surface rounded-2xl border border-panel-border overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-surface-highlight/30 text-txt-dim text-[10px] font-bold uppercase border-b border-panel-border">
+                                        <th className="p-4 pl-6">Producto</th>
+                                        <th className="p-4 text-center">Stock</th>
+                                        <th className="p-4 text-right">Costo</th>
+                                        <th className="p-4 text-right">Venta</th>
+                                        <th className="p-4 text-center">Estado</th>
+                                        <th className="p-4 text-right pr-6">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {items.map(item => (
+                                        <tr key={item.id} className="hover:bg-surface-highlight/5 group">
+                                            <td className="p-4 pl-6">
+                                                <div className="font-bold text-sm">{item.name}</div>
+                                                <div className="text-[10px] text-gray-400">{item.brand || '---'}</div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className={`font-mono font-bold ${item.quantity <= 5 ? 'text-red-500' : 'text-txt-primary'}`}>{item.quantity}</span>
+                                            </td>
+                                            <td className="p-4 text-right font-mono text-xs">{formatMoney(item.unit_cost)}</td>
+                                            <td className="p-4 text-right font-mono font-bold text-sm text-green-600">{formatMoney(item.selling_price)}</td>
+                                            <td className="p-4 text-center">
+                                                <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
+                                            </td>
+                                            <td className="p-4 text-right pr-6">
+                                                <div className="flex gap-2 justify-end">
+                                                    <button onClick={() => openEditModal(item)} className="p-1.5 text-gray-400 hover:text-void"><span className="material-icons text-sm">edit</span></button>
+                                                    <button onClick={() => handleSellClick(item)} className="p-1.5 text-gray-400 hover:text-green-600"><span className="material-icons text-sm">shopping_cart</span></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-4">
+                            {items.map(item => (
+                                <div key={item.id} className="p-5 bg-surface rounded-xl border border-panel-border shadow-sm">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="font-bold text-txt-primary">{item.name}</h3>
+                                            <p className="text-[10px] text-gray-400 font-mono">{formatMoney(item.selling_price)}</p>
+                                        </div>
+                                        <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
+                                    </div>
+                                    <div className="flex justify-between items-end border-t border-gray-50 pt-3">
+                                        <div>
+                                            <div className="text-[9px] text-gray-400 uppercase">Stock</div>
+                                            <div className="text-lg font-mono font-bold">{item.quantity}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="ghost" onClick={() => openEditModal(item)} className="px-3 py-1 text-[10px] font-bold">EDITAR</Button>
+                                            <Button variant="primary" onClick={() => handleSellClick(item)} className="px-3 py-1 text-[10px] font-bold">VENTA</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Modals */}
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-lg p-6">
+                <h2 className="text-xl font-bold mb-6">{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</h2>
+                <form onSubmit={handleEditSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nombre</label>
+                        <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Costo Unit.</label>
+                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Precio Venta</label>
+                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
+                        </div>
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                        <Button variant="ghost" type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1">Cancelar</Button>
+                        <Button variant="primary" type="submit" className="flex-1">Guardar Cambios</Button>
                     </div>
                 </form>
-            </Modal >
+            </Modal>
 
-            {/* Sell Modal */}
-            < Modal
-                isOpen={isSellModalOpen}
-                onClose={() => setIsSellModalOpen(false)}
-                className="max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 p-0 overflow-hidden"
-            >
-                <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-black flex items-center gap-2">
-                        <span className="material-icons text-green-600">monetization_on</span>
-                        Registrar Venta
-                    </h2>
-                    <button onClick={() => setIsSellModalOpen(false)} className="text-gray-400 hover:text-black transition-colors">
-                        <span className="material-icons">close</span>
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Item Seleccionado</div>
-                                <div className="text-black font-bold text-lg">{selectedItem?.name}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Costo Unit.</div>
-                                <div className="text-gray-600 font-mono text-sm">{formatMoney(selectedItem?.unit_cost)}</div>
-                            </div>
+            <Modal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} className="max-w-lg p-6">
+                <h2 className="text-xl font-bold mb-4">Registrar Venta</h2>
+                <p className="text-sm text-gray-400 mb-6">{selectedItem?.name}</p>
+                <form onSubmit={handleSellSubmit} className="space-y-5">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Cantidad</label>
+                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-mono" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Precio Unit.</label>
+                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-mono" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
                         </div>
                     </div>
-
-                    <form onSubmit={handleSellSubmit} className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cant. a Vender</label>
-                                <input
-                                    autoFocus
-                                    type="number"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none text-black font-mono transition-all"
-                                    value={sellQuantity}
-                                    onChange={e => setSellQuantity(e.target.value)}
-                                    max={selectedItem?.quantity}
-                                    min="0.1"
-                                    step="0.1"
-                                    required
-                                />
-                                <p className="text-[10px] text-gray-400 mt-2 text-right">Disponible: {selectedItem?.quantity}</p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Precio de Venta (Unit)</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
-                                    <input
-                                        type="number"
-                                        className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none text-black font-mono transition-all"
-                                        placeholder="0.00"
-                                        value={sellPriceUnit}
-                                        onChange={e => setSellPriceUnit(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {sellPriceUnit > 0 && sellPriceUnit < selectedItem?.unit_cost && (
-                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200 flex gap-3 items-start animate-pulse">
-                                <span className="material-icons text-orange-500 text-sm mt-0.5">warning</span>
-                                <div>
-                                    <h4 className="text-orange-700 font-bold text-xs uppercase">Alerta de Pérdida</h4>
-                                    <p className="text-[10px] text-orange-600">
-                                        Vendiendo bajo costo ({formatMoney(selectedItem.unit_cost)}).
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {sellPriceUnit >= selectedItem?.unit_cost && (
-                            <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
-                                <p className="text-xs text-green-700">
-                                    Ganancia Est. / Unit: <span className="text-lg font-bold font-mono block mt-1">{formatMoney(sellPriceUnit - selectedItem.unit_cost)}</span>
-                                </p>
-                            </div>
-                        )}
-
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Descripción de la Venta / Destino</label>
-                            <textarea
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-black outline-none text-black font-medium transition-all placeholder:text-gray-400 resize-none h-20 text-sm rounded-xl"
-                                placeholder="ej. Venta Cliente Bronce / Consumo Interno"
-                                value={workDesc}
-                                onChange={e => setWorkDesc(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between bg-black p-4 rounded-xl shadow-lg shadow-black/20">
-                            <span className="text-gray-400 text-xs uppercase font-bold tracking-widest">Ingreso Total</span>
-                            <span className="text-2xl font-mono font-bold text-white">{formatMoney((parseFloat(sellQuantity) || 0) * (parseFloat(sellPriceUnit) || 0))}</span>
-                        </div>
-
-                        <div className="flex gap-4 pt-2 border-t border-gray-100">
-                            <Button variant="ghost" onClick={() => setIsSellModalOpen(false)} className="flex-1 text-gray-500 hover:text-black hover:bg-gray-100">Cancelar</Button>
-                            <Button type="submit" variant="primary" className="flex-1 shadow-lg shadow-green-900/20 bg-black text-white hover:bg-gray-900">Confirmar Venta</Button>
-                        </div>
-                    </form>
-                </div>
-            </Modal >
-        </div >
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Descripción</label>
+                        <textarea className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none h-20" value={workDesc} onChange={e => setWorkDesc(e.target.value)} required placeholder="ej. Venta salón" />
+                    </div>
+                    <div className="pt-2 flex gap-3">
+                        <Button variant="ghost" type="button" onClick={() => setIsSellModalOpen(false)} className="flex-1">Cancelar</Button>
+                        <Button variant="primary" type="submit" className="flex-1 bg-void text-white">Confirmar Venta</Button>
+                    </div>
+                </form>
+            </Modal>
+        </div>
     );
 };
 

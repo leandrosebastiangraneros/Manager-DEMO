@@ -52,6 +52,21 @@ class StockItem(StockItemBase):
     class Config:
         from_attributes = True
 
+class BatchStockItem(BaseModel):
+    item_id: Optional[int] = None # Si es replenishment
+    name: str
+    brand: Optional[str] = None
+    is_pack: bool = False
+    pack_size: float = 1.0
+    cost_amount: float # Costo de la carga/lote
+    quantity: float # Cantidad de la carga (unid o packs)
+    selling_price: Optional[float] = None
+    category_id: Optional[int] = None
+
+class BatchStockRequest(BaseModel):
+    items: List[BatchStockItem]
+    description: Optional[str] = "Ingreso de Mercadería en Lote"
+
 class MaterialUsageBase(BaseModel):
     stock_item_id: int
     quantity: float
