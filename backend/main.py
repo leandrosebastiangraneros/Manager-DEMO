@@ -19,7 +19,11 @@ import schemas
 from database import SessionLocal, engine
 
 # Create tables
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Error initializing database: {e}")
+    # We continue, so the app can start and report the error via /health
 
 # Configurar root_path para Vercel
 # Vercel pasa la ruta completa /api/endpoint, pero FastAPI espera /endpoint
