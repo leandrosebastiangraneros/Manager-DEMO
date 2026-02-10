@@ -137,7 +137,7 @@ const Historial = () => {
                                         </td>
                                         <td className="p-5">
                                             <span className={`
-                                                inline-flex items-center gap-1.5 px-3 py-1 transparent border rounded-full text-[10px] font-black tracking-tighter
+                                                inline-flex items-center gap-1.5 px-3 py-1 border rounded-full text-[10px] font-black tracking-tighter
                                                 ${getCategoryStyles(m.category)}
                                             `}>
                                                 <span className="material-icons text-[12px]">{getIcon(m.category)}</span>
@@ -145,7 +145,7 @@ const Historial = () => {
                                             </span>
                                         </td>
                                         <td className="p-5">
-                                            <span className="text-txt-primary font-mono text-[11px] font-bold bg-gray-100 p-1 rounded-md">
+                                            <span className="text-txt-primary font-mono text-[11px] font-bold bg-surface-highlight p-1 px-2 rounded-md border border-panel-border">
                                                 {m.action}
                                             </span>
                                         </td>
@@ -154,9 +154,9 @@ const Historial = () => {
                                         </td>
                                         <td className="p-5 text-right pr-8">
                                             {m.metadata && Object.keys(m.metadata).length > 0 ? (
-                                                <div className="flex justify-end gap-1">
+                                                <div className="flex justify-end gap-1 flex-wrap">
                                                     {Object.entries(m.metadata).map(([key, val]) => (
-                                                        <span key={key} className="text-[9px] bg-black/5 text-txt-dim px-2 py-0.5 rounded font-mono" title={`${key}: ${val}`}>
+                                                        <span key={key} className="text-[9px] bg-surface-highlight text-txt-dim px-2 py-0.5 rounded font-mono border border-panel-border/50" title={`${key}: ${val}`}>
                                                             {key}: {typeof val === 'number' ? val.toLocaleString() : val}
                                                         </span>
                                                     ))}
