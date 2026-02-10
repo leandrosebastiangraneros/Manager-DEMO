@@ -391,9 +391,17 @@ const Stock = () => {
                             </div>
 
                             {selectedExisting && (
-                                <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex justify-between items-center animate-fadeIn">
-                                    <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.brand ? `${selectedExisting.brand} - ` : ''}{selectedExisting.name}</span>
-                                    <button type="button" onClick={() => setSelectedExisting(null)} className="text-green-800"><span className="material-icons text-xs">close</span></button>
+                                <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex flex-col gap-1 animate-fadeIn">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.brand ? `${selectedExisting.brand} - ` : ''}{selectedExisting.name}</span>
+                                        <button type="button" onClick={() => setSelectedExisting(null)} className="text-green-800"><span className="material-icons text-xs">close</span></button>
+                                    </div>
+                                    {isPack && parseFloat(packSize) !== selectedExisting.pack_size && (
+                                        <div className="text-[9px] text-indigo-600 font-bold flex items-center gap-1">
+                                            <span className="material-icons text-[12px]">info</span>
+                                            Se creará un nuevo formato de pack (x{packSize})
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

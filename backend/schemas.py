@@ -80,6 +80,7 @@ class BatchStockItem(BaseModel):
     cost_amount: float # Costo de la carga/lote
     quantity: float # Cantidad de la carga (unid o packs)
     selling_price: Optional[float] = None
+    pack_price: Optional[float] = None
     category_id: Optional[int] = None
     min_stock_alert: float = 5.0
     formats: Optional[List[StockItemFormatBase]] = []

@@ -12,6 +12,7 @@ const Ventas = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [openPackDropdown, setOpenPackDropdown] = useState(null);
 
     // Cart Management: { productId: quantity }
     const [cart, setCart] = useState({});
@@ -267,9 +268,11 @@ const Ventas = () => {
                                                                     {cart[`${product.id}_unit`]} U
                                                                 </span>
                                                             )}
-                                                            {cart[`${product.id}_pack`] > 0 && (
+                                                            {Object.keys(cart).some(key => key.startsWith(`${product.id}_pack`)) && (
                                                                 <span className="bg-void text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
-                                                                    {cart[`${product.id}_pack`]} P
+                                                                    {Object.entries(cart)
+                                                                        .filter(([key, _]) => key.startsWith(`${product.id}_pack`))
+                                                                        .reduce((sum, [_, qty]) => sum + qty, 0)} P
                                                                 </span>
                                                             )}
                                                         </div>
@@ -294,11 +297,13 @@ const Ventas = () => {
                                                             <div className="relative group/pack w-full">
                                                                 <button
                                                                     onClick={() => {
-                                                                        if (!product.formats || product.formats.length === 0) {
+                                                                        if (product.formats?.length > 0) {
+                                                                            setOpenPackDropdown(openPackDropdown === product.id ? null : product.id);
+                                                                        } else {
                                                                             updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack');
                                                                         }
                                                                     }}
-                                                                    className={`w-full py-2 px-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border border-panel-border/10 ${product.formats?.length > 0 ? 'bg-indigo-600 text-white cursor-default' : 'bg-accent text-void hover:opacity-90'}`}
+                                                                    className={`w-full py-2 px-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border border-panel-border/10 ${product.formats?.length > 0 ? 'bg-indigo-600 text-white' : 'bg-accent text-void hover:opacity-90'}`}
                                                                 >
                                                                     <span className="flex items-center gap-1">
                                                                         PACK {product.formats?.length > 0 ? 'MULTI' : `x${product.pack_size}`}
@@ -307,8 +312,8 @@ const Ventas = () => {
                                                                 </button>
 
                                                                 {/* Dropdown de Formatos */}
-                                                                {product.formats?.length > 0 && (
-                                                                    <div className="absolute bottom-full left-0 w-full bg-surface border-2 border-indigo-500 rounded-xl shadow-2xl z-50 mb-1 hidden group-hover/pack:block animate-fadeIn overflow-hidden">
+                                                                {product.formats?.length > 0 && openPackDropdown === product.id && (
+                                                                    <div className="absolute bottom-full left-0 w-full bg-surface border-2 border-indigo-500 rounded-xl shadow-2xl z-50 mb-1 animate-fadeIn overflow-hidden">
                                                                         <div className="bg-indigo-500 text-white text-[8px] font-bold py-1 px-2 uppercase text-center">Seleccionar Formato</div>
                                                                         {/* Legacy Option if exists */}
                                                                         {product.pack_size > 1 && (

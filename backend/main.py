@@ -221,8 +221,29 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             if item.selling_price:
                 update_data["selling_price"] = item.selling_price
             
-            # Note: unit_cost is calculated as a generated column in Supabase (cost_amount / initial_quantity)
-            # or it is restricted from manual updates. We calculate PPP for tracking but skip updating that specific column here to avoid 428C9 error.
+            # --- NEW: Handle Pack Prices and Formats during replenishment ---
+            if item.is_pack:
+                if item.pack_size == existing.get("pack_size"):
+                    if item.pack_price: update_data["pack_price"] = item.pack_price
+                else:
+                    # Search or Create Format
+                    fmt_res = supabase.table("stock_item_formats")\
+                        .select("*")\
+                        .eq("stock_item_id", item.item_id)\
+                        .eq("pack_size", item.pack_size)\
+                        .execute()
+                    
+                    fmt_payload = {
+                        "stock_item_id": item.item_id,
+                        "pack_size": item.pack_size,
+                        "pack_price": item.pack_price or (item.selling_price * item.pack_size if item.selling_price else 0),
+                        "label": f"Pack x{item.pack_size}"
+                    }
+                    
+                    if fmt_res.data:
+                        supabase.table("stock_item_formats").update(fmt_payload).eq("id", fmt_res.data[0]["id"]).execute()
+                    else:
+                        supabase.table("stock_item_formats").insert(fmt_payload).execute()
             
             supabase.table("stock_items").update(update_data).eq("id", item.item_id).execute()
             
