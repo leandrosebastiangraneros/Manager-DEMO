@@ -440,13 +440,33 @@ def generate_accounting_report(month: int, year: int, db: Session = Depends(get_
 @app.get("/api/fix-db-schema")
 @app.get("/fix-db-schema")
 def fix_db_schema(db: Session = Depends(get_db)):
+    status_log = []
     try:
-        # Add missing columns manually
-        db.execute(func.text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS selling_price FLOAT;"))
-        db.commit()
-        return {"status": "SUCCESS", "message": "Schema patched: Added selling_price to stock_items."}
+        # 1. Pre-check
+        check_sql = text("SELECT column_name FROM information_schema.columns WHERE table_name = 'stock_items' AND column_name = 'selling_price';")
+        exists_before = db.execute(check_sql).fetchone()
+        status_log.append(f"Pre-check: {'Found' if exists_before else 'Missing'}")
+
+        # 2. Attempt Fix
+        if not exists_before:
+            db.execute(text("ALTER TABLE stock_items ADD COLUMN selling_price FLOAT;"))
+            db.commit()
+            status_log.append("Executed ALTER TABLE")
+        else:
+            status_log.append("Skipping ALTER TABLE (Column exists)")
+
+        # 3. Post-check
+        exists_after = db.execute(check_sql).fetchone()
+        status_log.append(f"Post-check: {'Found' if exists_after else 'STILL MISSING'}")
+
+        return {
+            "status": "SUCCESS" if exists_after else "FAILURE", 
+            "message": "Schema patch process completed",
+            "log": status_log
+        }
     except Exception as e:
-        return {"status": "ERROR", "detail": str(e)}
+        db.rollback()
+        return {"status": "ERROR", "detail": str(e), "log": status_log}
 
 @app.post("/reset-db")
 def reset_database(db: Session = Depends(get_db)):
