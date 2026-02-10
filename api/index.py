@@ -1,29 +1,36 @@
 import sys
 import os
+import traceback
 
-# Añadimos la carpeta 'backend' al path para poder importar main
+# 1. Add backend to path
 current_dir = os.path.dirname(__file__)
 backend_dir = os.path.join(current_dir, '..', 'backend')
 sys.path.append(backend_dir)
 
+# 2. Try to import the Real App
 try:
     from main import app
-except Exception as e:
-    # FALLBACK EMERGENCY APP
-    # If main fails to import (missing deps, path errors), we serve this app
-    # to display the error instead of crashing with 500.
-    from fastapi import FastAPI
-    import traceback
+except Exception as e_main:
+    error_trace_main = traceback.format_exc()
     
-    app = FastAPI(title="Emergency Failover")
-    
-    error_msg = f"Failed to start backend: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-    
-    @app.get("/api/{path:path}")
-    def catch_all(path: str):
-        return {"status": "CRITICAL_ERROR", "detail": error_msg}
+    # 3. Try to import FastAPI for Emergency App
+    try:
+        from fastapi import FastAPI
+        from fastapi.responses import PlainTextResponse
+        
+        app = FastAPI(title="Emergency Failover")
+        
+        @app.get("/{path:path}")
+        def catch_all(path: str):
+            return PlainTextResponse(f"CRITICAL BACKEND ERROR\n\nMain App Import Failed:\n{error_trace_main}")
 
-    @app.get("/")
-    def root():
-        return {"status": "CRITICAL_ERROR", "detail": error_msg}
+    except ImportError:
+        # 4. Ultimate Fallback: Raw WSGI (No dependecies required)
+        # If FastAPI is missing, we use standard WSGI to print the error.
+        def app(environ, start_response):
+            status = '500 Internal Server Error'
+            output = f"CRITICAL: FastAPI module not found.\n\nTraceback:\n{error_trace_main}".encode('utf-8')
+            response_headers = [('Content-type', 'text/plain'), ('Content-Length', str(len(output)))]
+            start_response(status, response_headers)
+            return [output]
 
