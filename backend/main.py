@@ -26,15 +26,21 @@ except Exception as e:
     print(f"Error initializing database: {e}")
 
 # Configurar root_path para Vercel
-# Vercel pasa la ruta completa /api/endpoint, pero FastAPI espera /endpoint
-# root_path="/api" le dice a FastAPI que ignore ese prefijo.
 root_path = "/api" if os.getenv("VERCEL") else ""
 
-app = FastAPI(title="NovaManager Commercial - API", root_path=root_path)
+# DEBUG MODE ON
+app = FastAPI(title="NovaManager Commercial - API", root_path=root_path, debug=True)
+
+# --- SIMPLE PING ---
+@app.get("/api/ping")
+@app.get("/ping")
+def ping():
+    return {"status": "pong", "message": "Backend is reachable!"}
 
 # --- HEALTH CHECK ---
 @app.get("/health")
 def health_check():
+    return perform_health_check()
     return perform_health_check()
 
 @app.get("/api/health")
