@@ -135,6 +135,7 @@ const Stock = () => {
         setNewItemPackPrice('');
         setSelectedExisting(null);
         setSearchTerm('');
+        setSearchTerm('');
     };
 
     const removeItemFromDraft = (index) => {
@@ -316,7 +317,7 @@ const Stock = () => {
                                         onChange={e => setSearchTerm(e.target.value)}
                                     />
                                     {searchTerm && (
-                                        <div className="absolute top-full left-0 w-full bg-white border border-panel-border rounded-xl shadow-2xl z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar">
+                                        <div className="absolute top-full left-0 w-full bg-surface border border-panel-border rounded-xl shadow-2xl z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar">
                                             {items.filter(i =>
                                                 i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                                 (i.brand && i.brand.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -325,10 +326,10 @@ const Stock = () => {
                                                     key={i.id}
                                                     type="button"
                                                     onClick={() => handleSelectExisting(i)}
-                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-xs border-b border-gray-50 last:border-0"
+                                                    className="w-full text-left px-4 py-3 hover:bg-surface-highlight text-xs border-b border-panel-border/10 last:border-0"
                                                 >
-                                                    <div className="font-bold">{i.brand ? `${i.brand} - ` : ''}{i.name}</div>
-                                                    <div className="text-[10px] text-gray-400">Stock actual: {i.quantity} | {formatMoney(i.selling_price)}</div>
+                                                    <div className="font-bold text-txt-primary">{i.brand ? `${i.brand} - ` : ''}{i.name}</div>
+                                                    <div className="text-[10px] text-txt-dim">Stock actual: {i.quantity} | {formatMoney(i.selling_price)}</div>
                                                 </button>
                                             ))}
                                         </div>
@@ -461,7 +462,7 @@ const Stock = () => {
                                 </div>
                             )}
 
-                            <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-sm bg-void text-white">
+                            <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-md bg-accent text-void transition-standard hover:opacity-90">
                                 AGREGAR A LA LISTA
                             </Button>
                         </form>
@@ -591,25 +592,25 @@ const Stock = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Marca</label>
-                            <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
+                            <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nombre</label>
-                            <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
+                            <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Costo Unit.</label>
-                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
+                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Unid.</label>
-                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
+                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Pack</label>
-                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
+                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
                         </div>
                     </div>
 
@@ -635,11 +636,11 @@ const Stock = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Cantidad</label>
-                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-mono" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
+                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none font-mono" value={sellQuantity} onChange={e => setSellQuantity(e.target.value)} required />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Precio Unit.</label>
-                            <input type="number" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-mono" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
+                            <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none font-mono" value={sellPriceUnit} onChange={e => setSellPriceUnit(e.target.value)} required />
                         </div>
                     </div>
                     <div>
@@ -648,7 +649,7 @@ const Stock = () => {
                     </div>
                     <div className="pt-2 flex gap-3">
                         <Button variant="ghost" type="button" onClick={() => setIsSellModalOpen(false)} className="flex-1">Cancelar</Button>
-                        <Button variant="primary" type="submit" className="flex-1 bg-void text-white">Confirmar Venta</Button>
+                        <Button variant="primary" type="submit" className="flex-1 bg-accent text-void">Confirmar Venta</Button>
                     </div>
                 </form>
             </Modal>

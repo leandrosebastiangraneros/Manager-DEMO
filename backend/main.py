@@ -252,6 +252,7 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             purchase_tx_id = tx_res.data[0]["id"] if tx_res.data else None
             
             stock_data = item.model_dump()
+            stock_data.pop("item_id", None) # Remove item_id as it doesn't exist in stock_items table
             stock_data["purchase_tx_id"] = purchase_tx_id
             stock_data["purchase_date"] = datetime.now().isoformat()
             # quantity is initial_quantity in the base sense

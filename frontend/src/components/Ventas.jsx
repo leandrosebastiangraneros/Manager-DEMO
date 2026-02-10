@@ -261,7 +261,7 @@ const Ventas = () => {
                                                         {product.pack_size > 1 && (
                                                             <button
                                                                 onClick={() => updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack')}
-                                                                className="py-2 px-1 bg-void text-white hover:bg-gray-800 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-white/10"
+                                                                className="py-2 px-1 bg-accent text-void hover:opacity-90 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-panel-border/10"
                                                             >
                                                                 <span>PACK x{product.pack_size}</span>
                                                             </button>
