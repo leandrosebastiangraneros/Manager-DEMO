@@ -7,6 +7,26 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
 
+    // Auto-Healing: Check and Seed Categories if missing
+    React.useEffect(() => {
+        const checkAndSeed = async () => {
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/categories`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length === 0) {
+                        console.log("No categories found. Auto-seeding...");
+                        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/seed-categories`);
+                        window.location.reload(); // Reload to reflect changes
+                    }
+                }
+            } catch (err) {
+                console.error("Auto-seed check failed:", err);
+            }
+        };
+        checkAndSeed();
+    }, []);
+
     return (
         <div className="flex bg-void h-screen w-full font-sans text-txt-primary overflow-hidden">
             <Toaster position="top-right" theme="dark" richColors closeButton />
