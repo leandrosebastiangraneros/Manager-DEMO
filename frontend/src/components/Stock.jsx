@@ -269,14 +269,17 @@ const Stock = () => {
                                     />
                                     {searchTerm && (
                                         <div className="absolute top-full left-0 w-full bg-white border border-panel-border rounded-xl shadow-2xl z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar">
-                                            {items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(i => (
+                                            {items.filter(i =>
+                                                i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                (i.brand && i.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+                                            ).map(i => (
                                                 <button
                                                     key={i.id}
                                                     type="button"
                                                     onClick={() => handleSelectExisting(i)}
                                                     className="w-full text-left px-4 py-3 hover:bg-gray-50 text-xs border-b border-gray-50 last:border-0"
                                                 >
-                                                    <div className="font-bold">{i.name} {i.brand && <span className="text-gray-400 font-normal">({i.brand})</span>}</div>
+                                                    <div className="font-bold">{i.brand ? `${i.brand} - ` : ''}{i.name}</div>
                                                     <div className="text-[10px] text-gray-400">Stock actual: {i.quantity} | {formatMoney(i.selling_price)}</div>
                                                 </button>
                                             ))}
@@ -287,22 +290,35 @@ const Stock = () => {
 
                             {selectedExisting && (
                                 <div className="bg-green-50 p-2 rounded-lg border border-green-100 flex justify-between items-center animate-fadeIn">
-                                    <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.name}</span>
+                                    <span className="text-[10px] font-bold text-green-700 uppercase">REPONIENDO: {selectedExisting.brand ? `${selectedExisting.brand} - ` : ''}{selectedExisting.name}</span>
                                     <button type="button" onClick={() => setSelectedExisting(null)} className="text-green-800"><span className="material-icons text-xs">close</span></button>
                                 </div>
                             )}
 
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nombre del Producto</label>
-                                <input
-                                    type="text"
-                                    placeholder="Nombre"
-                                    className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none"
-                                    value={newItemName}
-                                    onChange={e => setNewItemName(e.target.value)}
-                                    required
-                                    disabled={!!selectedExisting}
-                                />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marca</label>
+                                    <input
+                                        type="text"
+                                        placeholder="ej. Quilmes"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none"
+                                        value={newItemBrand}
+                                        onChange={e => setNewItemBrand(e.target.value)}
+                                        disabled={!!selectedExisting}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nombre</label>
+                                    <input
+                                        type="text"
+                                        placeholder="ej. Lata 473ml"
+                                        className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none"
+                                        value={newItemName}
+                                        onChange={e => setNewItemName(e.target.value)}
+                                        required
+                                        disabled={!!selectedExisting}
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -342,12 +358,13 @@ const Stock = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Costo de Carga</label>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Costo Lote (Total)</label>
                                     <input
                                         type="number"
                                         className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono"
                                         value={newItemCost}
                                         onChange={e => setNewItemCost(e.target.value)}
+                                        placeholder="0.00"
                                         required
                                     />
                                 </div>
@@ -395,7 +412,9 @@ const Stock = () => {
                                         <button onClick={() => removeItemFromDraft(idx)} className="absolute top-2 right-2 text-gray-300 hover:text-red-500"><span className="material-icons text-sm">cancel</span></button>
                                         <div>
                                             <div className="text-[9px] font-mono text-txt-dim uppercase">{item.item_id ? 'REPOSICIÓN' : 'NUEVO'}</div>
-                                            <div className="font-bold text-sm truncate">{item.name}</div>
+                                            <div className="font-bold text-sm truncate">
+                                                {item.brand ? `${item.brand} - ` : ''}{item.name}
+                                            </div>
                                             <div className="text-[10px] text-gray-400 font-mono italic">x{item.quantity} {item.is_pack ? `packs` : `unid.`}</div>
                                         </div>
                                     </div>
@@ -428,8 +447,11 @@ const Stock = () => {
                                     {items.map(item => (
                                         <tr key={item.id} className="hover:bg-surface-highlight/5 group">
                                             <td className="p-4 pl-6">
-                                                <div className="font-bold text-sm">{item.name}</div>
-                                                <div className="text-[10px] text-gray-400">{item.brand || '---'}</div>
+                                                <div className="font-bold text-sm">
+                                                    {item.brand ? <span className="text-gray-400 font-medium mr-1">{item.brand}</span> : ''}
+                                                    {item.name}
+                                                </div>
+                                                <div className="text-[9px] text-gray-400 font-mono tracking-tighter">ID: {item.id.toString().padStart(4, '0')}</div>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <span className={`font-mono font-bold ${item.quantity <= 5 ? 'text-red-500' : 'text-txt-primary'}`}>{item.quantity}</span>
@@ -457,7 +479,10 @@ const Stock = () => {
                                 <div key={item.id} className="p-5 bg-surface rounded-xl border border-panel-border shadow-sm">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className="font-bold text-txt-primary">{item.name}</h3>
+                                            <h3 className="font-bold text-txt-primary">
+                                                {item.brand ? <span className="text-gray-400 font-medium mr-1">{item.brand}</span> : ''}
+                                                {item.name}
+                                            </h3>
                                             <p className="text-[10px] text-gray-400 font-mono">{formatMoney(item.selling_price)}</p>
                                         </div>
                                         <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
@@ -483,9 +508,15 @@ const Stock = () => {
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-lg p-6">
                 <h2 className="text-xl font-bold mb-6">{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</h2>
                 <form onSubmit={handleEditSubmit} className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nombre</label>
-                        <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Marca</label>
+                            <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nombre</label>
+                            <input type="text" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

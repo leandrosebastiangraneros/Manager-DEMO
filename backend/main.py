@@ -211,11 +211,13 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             # Update Existing Item
             update_data = {
                 "quantity": new_total_qty,
-                "unit_cost": new_unit_cost,
                 "status": "AVAILABLE"
             }
             if item.selling_price:
                 update_data["selling_price"] = item.selling_price
+            
+            # Note: unit_cost is calculated as a generated column in Supabase (cost_amount / initial_quantity)
+            # or it is restricted from manual updates. We calculate PPP for tracking but skip updating that specific column here to avoid 428C9 error.
             
             supabase.table("stock_items").update(update_data).eq("id", item.item_id).execute()
             
@@ -258,9 +260,8 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
             stock_data["quantity"] = total_initial
             stock_data["status"] = "AVAILABLE"
             
-            # Unit cost calculation for the record
-            # cost_amount / initial_quantity
-            stock_data["unit_cost"] = item.cost_amount / total_initial if total_initial > 0 else 0
+            # Unit cost is handled by Supabase as a generated column (cost_amount / initial_quantity)
+            # or it is restricted from manual input. We omit it from the payload to avoid 428C9 error.
             
             stock_res = supabase.table("stock_items").insert(stock_data).execute()
             if stock_res.data:
