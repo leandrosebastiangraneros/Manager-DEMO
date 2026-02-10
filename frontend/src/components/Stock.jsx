@@ -3,7 +3,7 @@ import { useDialog } from '../context/DialogContext';
 import { API_URL } from '../config';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
-import StatusBadge from './common/StatusBadge';
+// import StatusBadge from './common/StatusBadge'; // Not used in this layout
 import Modal from './common/Modal';
 
 const Stock = () => {
@@ -13,7 +13,6 @@ const Stock = () => {
 
     // Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isReplenishModalOpen, setIsReplenishModalOpen] = useState(false);
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
@@ -34,7 +33,7 @@ const Stock = () => {
     const [isSavingBatch, setIsSavingBatch] = useState(false);
     const [minStockAlert, setMinStockAlert] = useState('5');
 
-    // Search/Selection for Replenishment & Main View
+    // Search/Selection
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedExisting, setSelectedExisting] = useState(null);
 
@@ -189,7 +188,6 @@ const Stock = () => {
             if (res.ok) {
                 showAlert("Inventario actualizado con éxito", "success");
                 setDraftItems([]);
-                setIsReplenishModalOpen(false);
                 fetchStock();
             } else {
                 const err = await res.json();
@@ -306,330 +304,276 @@ const Stock = () => {
 
     return (
         <div className="h-full flex flex-col pb-20 overflow-hidden">
-            {/* Professional Header */}
+            {/* Header section stays simple */}
             <header className="mb-6 flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1 uppercase">
-                            Inventario de <span className="text-txt-primary/50">Productos</span>
+                            Gestión de <span className="text-txt-primary/50">Inventario</span>
                         </h1>
-                        <p className="text-txt-secondary text-xs font-medium">Gestiona el stock y los precios de tu catálogo.</p>
+                        <p className="text-txt-secondary text-xs font-medium">Carga mercadería y administra tu stock.</p>
                     </div>
 
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface flex-1 md:w-80 border border-panel-border/5">
-                            <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-txt-primary transition-colors text-lg">search</span>
-                            <input
-                                type="text"
-                                placeholder="Buscar producto..."
-                                className="w-full bg-transparent border-none pl-11 pr-4 py-3 text-txt-primary font-medium text-sm rounded-xl outline-none placeholder:text-txt-dim"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <button
-                            onClick={() => {
-                                setIsEditing(false);
-                                setDraftItems([]);
-                                setIsReplenishModalOpen(true);
-                            }}
-                            className="bg-accent text-void px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg hover:opacity-90 transition-all active:scale-95"
-                        >
-                            <span className="material-icons text-sm">inventory_2</span>
-                            <span className="hidden sm:inline">Reposición</span>
-                        </button>
+                    <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface flex-1 md:w-80 border border-panel-border/5">
+                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-txt-primary transition-colors text-lg">search</span>
+                        <input
+                            type="text"
+                            placeholder="Filtrar inventario..."
+                            className="w-full bg-transparent border-none pl-11 pr-4 py-3 text-txt-primary font-medium text-sm rounded-xl outline-none placeholder:text-txt-dim"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                {/* Stats Row */}
+                {/* Stats cards for consistency */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                    <div className="bg-surface p-5 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-accent/20 transition-all">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <span className="material-icons text-2xl">grid_view</span>
+                    <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-accent/20 transition-all">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="material-icons text-xl">grid_view</span>
                         </div>
                         <div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Productos</div>
-                            <div className="text-xl font-mono font-black text-txt-primary">{totalProdCount}</div>
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Total Productos</div>
+                            <div className="text-lg font-mono font-black text-txt-primary">{totalProdCount}</div>
                         </div>
                     </div>
-                    <div className="bg-surface p-5 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-all">
-                        <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <span className="material-icons text-2xl">warning_amber</span>
+                    <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-all">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="material-icons text-xl">warning_amber</span>
                         </div>
                         <div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stock Bajo</div>
-                            <div className="text-xl font-mono font-black text-orange-600">{lowStockCount}</div>
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Stock Bajo</div>
+                            <div className="text-lg font-mono font-black text-orange-600">{lowStockCount}</div>
                         </div>
                     </div>
-                    <div className="bg-surface p-5 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-green-200 transition-all">
-                        <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <span className="material-icons text-2xl">payments</span>
+                    <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-green-200 transition-all">
+                        <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="material-icons text-xl">payments</span>
                         </div>
                         <div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Valor Inventario</div>
-                            <div className="text-xl font-mono font-black text-txt-primary">{formatMoney(inventoryValue)}</div>
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Valor Inventario</div>
+                            <div className="text-lg font-mono font-black text-txt-primary">{formatMoney(inventoryValue)}</div>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Table Area */}
-            <div className="flex-1 overflow-hidden bg-surface rounded-2xl border border-panel-border/5 shadow-sm flex flex-col">
-                <div className="overflow-auto custom-scrollbar flex-1">
-                    {/* Desktop Table */}
-                    <table className="w-full text-left border-collapse hidden md:table">
-                        <thead>
-                            <tr className="bg-gray-50/50 text-txt-dim text-[10px] uppercase font-bold tracking-widest border-b border-panel-border/5 sticky top-0 bg-surface z-10">
-                                <th className="p-4 pl-8">Producto</th>
-                                <th className="p-4 text-center">Stock Actual</th>
-                                <th className="p-4 text-right">Costo Unit.</th>
-                                <th className="p-4 text-right">Precio Venta</th>
-                                <th className="p-4 text-center">Estado</th>
-                                <th className="p-4 text-right pr-8">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50/30">
-                            {filteredItems.map(item => {
-                                const isLowStock = item.quantity <= (item.min_stock_alert || 5);
-                                return (
-                                    <tr key={item.id} className="hover:bg-gray-50/5 transition-colors group">
-                                        <td className="p-4 pl-8">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
-                                                    <span className="material-icons text-xl">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-txt-primary line-clamp-1">{item.name}</span>
-                                                    <span className="text-[10px] text-txt-dim uppercase font-medium">{item.brand || 'Genérico'}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <span className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
-                                                {item.quantity}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right font-mono text-xs text-txt-dim">{formatMoney(item.unit_cost)}</td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-xs font-mono font-bold text-txt-primary">{formatMoney(item.selling_price)}</span>
-                                                <span className="text-[8px] text-gray-400 uppercase font-black">Por Unidad</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-sm flex items-center justify-center w-fit mx-auto gap-1 ${isLowStock ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                                <span className="w-1 h-1 rounded-full bg-current"></span>
-                                                {isLowStock ? 'Stock Bajo' : 'En Stock'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right pr-8">
-                                            <div className="flex gap-1 justify-end">
-                                                <button onClick={() => openEditModal(item)} className="p-2 text-gray-400 hover:text-accent transition-colors" title="Editar">
-                                                    <span className="material-icons text-lg">edit</span>
-                                                </button>
-                                                <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar">
-                                                    <span className="material-icons text-lg">delete</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+            {/* Split Main View */}
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-                    {/* Mobile Cards */}
-                    <div className="md:hidden divide-y divide-panel-border/5">
-                        {filteredItems.map(item => {
-                            const isLowStock = item.quantity <= (item.min_stock_alert || 5);
-                            return (
-                                <div key={item.id} className="p-4 flex flex-col gap-3">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
-                                                <span className="material-icons text-xl">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-txt-primary">{item.name}</span>
-                                                <span className="text-[10px] text-txt-dim uppercase">{item.brand || 'Genérico'}</span>
-                                            </div>
+                {/* Section 1: Replenishment Panel (Sticky/Constant) */}
+                <div className="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
+                    <GlassContainer className="p-5 border-panel-border/5 flex flex-col h-full bg-surface shadow-lg">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="material-icons text-accent text-lg">add_box</span>
+                            <h2 className="text-xs font-black uppercase tracking-widest text-txt-primary">Entrada de Mercadería</h2>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-5 pr-1">
+                            {/* Search for Existing to Populate Form */}
+                            <div className="relative">
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Producto Existente</label>
+                                <div className="relative">
+                                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">inventory</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar para reponer..."
+                                        className="w-full pl-9 pr-4 py-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none focus:border-accent"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                    />
+                                    {searchTerm && (
+                                        <div className="absolute top-full left-0 w-full bg-surface border border-panel-border rounded-xl shadow-2xl z-50 mt-1 max-h-40 overflow-y-auto">
+                                            {items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(i => (
+                                                <button
+                                                    key={i.id}
+                                                    type="button"
+                                                    onClick={() => { handleSelectExisting(i); setSearchTerm(''); }}
+                                                    className="w-full text-left px-3 py-2.5 hover:bg-surface-highlight text-xs border-b border-panel-border/5 last:border-0"
+                                                >
+                                                    <div className="font-bold truncate">{i.name}</div>
+                                                    <div className="text-[9px] text-gray-400">Stock actual: {i.quantity}</div>
+                                                </button>
+                                            ))}
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-sm ${isLowStock ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                            {isLowStock ? 'Bajo' : 'OK'}
-                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {selectedExisting && (
+                                <div className="p-2.5 bg-accent/5 border border-accent/10 rounded-xl relative animate-fadeIn flex justify-between items-center">
+                                    <div className="truncate">
+                                        <div className="text-[8px] font-black text-accent uppercase tracking-tighter">Seleccionado para reposición</div>
+                                        <div className="text-xs font-bold truncate">{selectedExisting.name}</div>
                                     </div>
-                                    <div className="flex justify-between items-end">
+                                    <button onClick={() => setSelectedExisting(null)} className="text-accent hover:text-void transition-colors"><span className="material-icons text-sm">close</span></button>
+                                </div>
+                            )}
+
+                            {/* Form */}
+                            <form onSubmit={addToDraft} className="space-y-4">
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <span className="text-[9px] text-gray-400 uppercase font-black">Stock</span>
-                                            <div className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Marca</label>
+                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none disabled:opacity-50" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} disabled={!!selectedExisting} />
                                         </div>
                                         <div>
-                                            <span className="text-[9px] text-gray-400 uppercase font-black">Precio</span>
-                                            <div className="text-sm font-mono font-bold text-txt-primary">{formatMoney(item.selling_price)}</div>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nombre</label>
+                                            <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none disabled:opacity-50" value={newItemName} onChange={e => setNewItemName(e.target.value)} required disabled={!!selectedExisting} />
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => openEditModal(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">edit</span></button>
-                                            <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">delete</span></button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Cantidad</label>
+                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono" value={newItemQuantity} onChange={e => setNewItemQuantity(e.target.value)} required />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Costo Total</label>
+                                            <input type="number" className="w-full p-2.5 bg-surface-highlight border border-panel-border/5 rounded-xl text-xs outline-none font-mono" placeholder="0.00" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })}
+
+                                <button type="submit" className="w-full py-3 bg-void text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-accent hover:text-void transition-all shadow-md">
+                                    Agregar al Draft
+                                </button>
+                            </form>
+
+                            {/* Draft List Summary */}
+                            {draftItems.length > 0 && (
+                                <div className="pt-4 border-t border-panel-border/5 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-[9px] font-black uppercase text-txt-dim">Draft ({draftItems.length})</h3>
+                                        <button onClick={handleSaveBatch} disabled={isSavingBatch} className="text-accent text-[9px] font-black uppercase hover:underline">
+                                            {isSavingBatch ? 'Procesando...' : 'Confirmar Todo'}
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {draftItems.map((item, idx) => (
+                                            <div key={idx} className="bg-surface-highlight/50 p-2 rounded-lg text-[10px] flex justify-between items-center group relative">
+                                                <div className="truncate pr-4 flex flex-col">
+                                                    <span className="font-bold truncate text-txt-primary">{item.name}</span>
+                                                    <span className="text-[8px] opacity-50 font-mono">x{item.quantity} | {formatMoney(item.cost_amount)}</span>
+                                                </div>
+                                                <button onClick={() => setDraftItems(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all absolute right-2">
+                                                    <span className="material-icons text-xs">close</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </GlassContainer>
+                </div>
+
+                {/* Section 2: Full Inventory Table */}
+                <div className="lg:col-span-3 overflow-hidden flex flex-col bg-surface rounded-2xl border border-panel-border/5 shadow-sm">
+                    <div className="overflow-auto custom-scrollbar flex-1">
+                        {/* Desktop Table */}
+                        <table className="w-full text-left border-collapse hidden md:table">
+                            <thead>
+                                <tr className="bg-gray-50/50 text-txt-dim text-[10px] uppercase font-bold tracking-widest border-b border-panel-border/5 sticky top-0 bg-surface z-10">
+                                    <th className="p-4 pl-8">Producto</th>
+                                    <th className="p-4 text-center">Stock</th>
+                                    <th className="p-4 text-right">Costo Unit.</th>
+                                    <th className="p-4 text-right">Precio Venta</th>
+                                    <th className="p-4 text-center">Estado</th>
+                                    <th className="p-4 text-right pr-8">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50/30">
+                                {filteredItems.map(item => {
+                                    const isLowStock = item.quantity <= (item.min_stock_alert || 5);
+                                    return (
+                                        <tr key={item.id} className="hover:bg-gray-50/5 transition-colors group">
+                                            <td className="p-4 pl-8">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
+                                                        <span className="material-icons text-lg">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-txt-primary line-clamp-1">{item.name}</span>
+                                                        <span className="text-[9px] text-txt-dim uppercase font-medium">{item.brand || 'Genérico'}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className={`text-xs font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
+                                                    {item.quantity}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right font-mono text-xs text-txt-dim">{formatMoney(item.unit_cost)}</td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xs font-mono font-bold text-txt-primary">{formatMoney(item.selling_price)}</span>
+                                                    <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Venta</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-sm flex items-center justify-center w-fit mx-auto gap-1 ${isLowStock ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                                    {isLowStock ? 'Crítico' : 'Disponible'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right pr-8">
+                                                <div className="flex gap-1 justify-end">
+                                                    <button onClick={() => openEditModal(item)} className="p-2 text-gray-400 hover:text-accent transition-colors">
+                                                        <span className="material-icons text-base">edit</span>
+                                                    </button>
+                                                    <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                                        <span className="material-icons text-base">delete</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
+                        {/* Mobile Cards Fallback */}
+                        <div className="md:hidden divide-y divide-panel-border/5">
+                            {filteredItems.map(item => {
+                                const isLowStock = item.quantity <= (item.min_stock_alert || 5);
+                                return (
+                                    <div key={item.id} className="p-4 flex flex-col gap-3">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-surface-highlight flex items-center justify-center text-txt-dim">
+                                                    <span className="material-icons text-base">{item.pack_size > 1 ? 'inventory_2' : 'shopping_basket'}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-txt-primary">{item.name}</span>
+                                                    <span className="text-[9px] text-txt-dim uppercase">{item.brand || 'Genérico'}</span>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter shadow-sm ${isLowStock ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                                {isLowStock ? 'Bajo' : 'OK'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <span className="text-[8px] text-gray-400 uppercase font-black">Stock</span>
+                                                <div className={`text-xs font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => openEditModal(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">edit</span></button>
+                                                <button onClick={() => handleDeleteClick(item)} className="p-2 text-gray-400"><span className="material-icons text-sm">delete</span></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Replenish Modal */}
-            <Modal isOpen={isReplenishModalOpen} onClose={() => setIsReplenishModalOpen(false)} className="max-w-5xl p-0 overflow-hidden">
-                <div className="flex flex-col h-[90vh]">
-                    <div className="p-6 bg-surface border-b border-panel-border/5 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-accent text-void flex items-center justify-center">
-                                <span className="material-icons">inventory_2</span>
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-black uppercase tracking-tight">Reposición de Mercadería</h2>
-                                <p className="text-xs text-txt-dim">Carga nuevos productos o repone existentes en lote.</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setIsReplenishModalOpen(false)} className="text-gray-400 hover:text-txt-primary transition-colors">
-                            <span className="material-icons">close</span>
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-auto p-6 bg-surface-highlight/30">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-1">
-                                <GlassContainer className="p-6 border-panel-border/5 space-y-6">
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-txt-primary/50">Datos del Lote</h3>
-
-                                    <div className="space-y-4">
-                                        <div className="relative">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">¿Producto Existente?</label>
-                                            <div className="relative group">
-                                                <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Buscar para reponer..."
-                                                    className="w-full pl-9 pr-4 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none focus:border-accent transition-all"
-                                                    value={searchTerm}
-                                                    onChange={e => setSearchTerm(e.target.value)}
-                                                />
-                                                {searchTerm && (
-                                                    <div className="absolute top-full left-0 w-full bg-surface border border-panel-border rounded-xl shadow-2xl z-[150] mt-1 max-h-48 overflow-y-auto">
-                                                        {items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())).map(i => (
-                                                            <button
-                                                                key={i.id}
-                                                                type="button"
-                                                                onClick={() => { handleSelectExisting(i); setSearchTerm(''); }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-surface-highlight text-xs border-b border-panel-border/5 last:border-0"
-                                                            >
-                                                                <div className="font-bold">{i.name}</div>
-                                                                <div className="text-[10px] text-gray-400 underline">Stock actual: {i.quantity}</div>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {selectedExisting && (
-                                            <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl relative animate-fadeIn flex justify-between items-center">
-                                                <div>
-                                                    <div className="text-[9px] font-black text-accent uppercase tracking-tighter">Seleccionado</div>
-                                                    <div className="text-xs font-bold">{selectedExisting.name}</div>
-                                                </div>
-                                                <button onClick={() => setSelectedExisting(null)} className="text-accent underline text-[10px] font-bold">Quitar</button>
-                                            </div>
-                                        )}
-
-                                        <form onSubmit={addToDraft} className="space-y-4 pt-2">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marca</label>
-                                                    <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none disabled:opacity-50" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} disabled={!!selectedExisting} />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nombre</label>
-                                                    <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none disabled:opacity-50" value={newItemName} onChange={e => setNewItemName(e.target.value)} required disabled={!!selectedExisting} />
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{isPack ? 'Cant. Packs' : 'Cantidad'}</label>
-                                                    <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono" value={newItemQuantity} onChange={e => setNewItemQuantity(e.target.value)} required />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Costo Lote</label>
-                                                    <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none font-mono" placeholder="0.00" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-2">
-                                                <button type="submit" className="w-full py-4 bg-void text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-accent hover:text-void transition-all shadow-md active:scale-95">
-                                                    Agregar al Borrador
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </GlassContainer>
-                            </div>
-
-                            <div className="lg:col-span-2 flex flex-col gap-4">
-                                <div className="flex justify-between items-center px-2">
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-txt-primary/50">Draft de Ingreso ({draftItems.length})</h3>
-                                    {draftItems.length > 0 && (
-                                        <button onClick={handleSaveBatch} disabled={isSavingBatch} className="bg-accent text-void px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:shadow-accent/20 transition-all active:scale-95">
-                                            {isSavingBatch ? 'Procesando...' : 'Confirmar Todo el Lote'}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {draftItems.length === 0 ? (
-                                    <div className="flex-1 border-2 border-dashed border-panel-border/20 rounded-3xl flex flex-col items-center justify-center text-gray-300 min-h-[400px]">
-                                        <span className="material-icons text-6xl mb-4 opacity-10">playlist_add</span>
-                                        <p className="text-[11px] font-mono uppercase tracking-widest">No hay items en el borrador</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {draftItems.map((item, idx) => (
-                                            <div key={idx} className="bg-surface p-5 rounded-2xl border border-panel-border/5 shadow-sm relative group animate-fadeIn transition-all hover:border-accent/10">
-                                                <button onClick={() => setDraftItems(prev => prev.filter((_, i) => i !== idx))} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors">
-                                                    <span className="material-icons text-lg">cancel</span>
-                                                </button>
-                                                <div className="mb-2">
-                                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${item.item_id ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        {item.item_id ? 'Reposición' : 'Nuevo Producto'}
-                                                    </span>
-                                                </div>
-                                                <div className="font-bold text-sm truncate text-txt-primary mb-1">{item.name}</div>
-                                                <div className="text-[10px] text-txt-dim uppercase font-medium">{item.brand || 'Genérico'}</div>
-                                                <div className="mt-4 pt-4 border-t border-panel-border/5 flex justify-between items-center">
-                                                    <div>
-                                                        <span className="text-[9px] text-gray-400 uppercase font-black">Cant.</span>
-                                                        <div className="text-xs font-mono font-bold">{item.quantity} {item.is_pack ? 'Packs' : 'Unid.'}</div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="text-[9px] text-gray-400 uppercase font-black">Costo Lote</span>
-                                                        <div className="text-xs font-mono font-bold text-green-600">{formatMoney(item.cost_amount)}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Add/Edit Modal */}
+            {/* Modals for Editing and Selling (Still needed as separate flows) */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-xl p-8">
-                <h2 className="text-xl font-black uppercase tracking-tight mb-8">
-                    {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
-                </h2>
+                <h2 className="text-xl font-black uppercase tracking-tight mb-8">Editar Producto</h2>
                 <form onSubmit={handleEditSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar pr-2">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -702,7 +646,6 @@ const Stock = () => {
                 </form>
             </Modal>
 
-            {/* Sell Modal */}
             <Modal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} className="max-w-md p-8">
                 <h2 className="text-xl font-black uppercase tracking-tight mb-2">Registrar Venta</h2>
                 <p className="text-xs text-txt-dim mb-8">{selectedItem?.name}</p>
