@@ -31,6 +31,7 @@ const Stock = () => {
     const [categories, setCategories] = useState([]);
     const [draftItems, setDraftItems] = useState([]);
     const [isSavingBatch, setIsSavingBatch] = useState(false);
+    const [minStockAlert, setMinStockAlert] = useState('5');
 
     // Search/Selection for Replenishment
     const [searchTerm, setSearchTerm] = useState('');
@@ -128,6 +129,7 @@ const Stock = () => {
         setNewItemCategoryId(item.category_id || '');
         setIsPack(item.is_pack || false);
         setPackSize(item.pack_size || '1');
+        setMinStockAlert(item.min_stock_alert || '5');
         setNewItemFormats(item.formats || []);
         setIsAddModalOpen(true);
     };
@@ -226,63 +228,55 @@ const Stock = () => {
         setPackSize('1');
         setSearchTerm('');
     };
-
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
-        const cost = parseFloat(newItemCost);
-        const qty = parseFloat(newItemQuantity);
-        const sellPrice = parseFloat(newItemSellingPrice);
-        const packP = newItemPackPrice ? parseFloat(newItemPackPrice) : null;
-        const pSize = parseFloat(packSize) || 1;
+        try {
+            const existingItem = items.find(i => i.id === editingId);
+            const payload = {
+                name: newItemName,
+                brand: newItemBrand,
+                is_pack: isPack,
+                pack_size: parseFloat(packSize),
+                cost_amount: parseFloat(newItemCost) * (existingItem ? existingItem.initial_quantity : (isPack ? parseFloat(newItemQuantity) * parseFloat(packSize) : parseFloat(newItemQuantity))),
+                initial_quantity: existingItem ? existingItem.initial_quantity : (isPack ? parseFloat(newItemQuantity) * parseFloat(packSize) : parseFloat(newItemQuantity)),
+                selling_price: parseFloat(newItemSellingPrice),
+                pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
+                category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null,
+                min_stock_alert: parseFloat(minStockAlert)
+            };
 
-        // Calculations for validation
-        const totalUnits = isPack ? qty * pSize : qty;
-        const unitCost = cost / totalUnits;
-        const packCost = unitCost * pSize;
+            const res = await fetch(`${API_URL}/stock/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (sellPrice <= unitCost) {
-            showAlert(`El precio de venta unitario ($${sellPrice}) debe ser mayor al costo ($${unitCost.toFixed(2)})`, "warning");
-            return;
-        }
-
-        if (packP && packP <= packCost) {
-            showAlert(`El precio de pack ($${packP}) debe ser mayor al costo del pack ($${packCost.toFixed(2)})`, "warning");
-            return;
-        }
-
-        // Logic change: In Edit mode, newItemCost is treated as UNIT COST.
-        // We need to send cost_amount as (unit_cost * initial_quantity) to keep backend consistency
-        // OR we need to find what the initial_quantity was.
-        // For now, let's assume we want to maintain the original cost_amount if we didn't change cost?
-        // Actually, let's just use the unit cost as cost_amount if initial_quantity is 1.
-        // The most robust way is to use existing item's initial_quantity.
-        const existingItem = items.find(i => i.id === editingId);
-        const finalCostAmount = existingItem ? (cost * existingItem.initial_quantity) : cost;
-
-        const payload = {
-            name: newItemName,
-            brand: newItemBrand,
-            is_pack: isPack,
-            pack_size: parseFloat(packSize),
-            cost_amount: finalCostAmount,
-            initial_quantity: existingItem ? existingItem.initial_quantity : qty,
-            selling_price: sellPrice,
-            pack_price: newItemPackPrice ? parseFloat(newItemPackPrice) : null,
-            category_id: newItemCategoryId ? parseInt(newItemCategoryId) : null
-        };
-
-        fetch(`${API_URL}/stock/${editingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-            .then(res => res.json())
-            .then(() => {
-                fetchStock();
+            if (res.ok) {
+                showAlert("Producto actualizado con éxito", "success");
                 setIsAddModalOpen(false);
-                showAlert("Producto actualizado", "success");
-            })
-            .catch(err => showAlert("Error al editar: " + err.message, "error"));
+                fetchStock();
+            }
+        } catch (err) {
+            console.error(err);
+            showAlert("Error al actualizar producto", "error");
+        }
+    };
+
+    const handleDeleteClick = async (item) => {
+        if (window.confirm(`¿Estás seguro de que deseas eliminar ${item.name}?`)) {
+            try {
+                const res = await fetch(`${API_URL}/stock/${item.id}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    showAlert("Producto eliminado", "success");
+                    fetchStock();
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert("Error al eliminar", "error");
+            }
+        }
     };
 
     const handleSellClick = (item) => {
@@ -601,7 +595,9 @@ const Stock = () => {
                                                 <div className="text-[9px] text-gray-400 font-mono tracking-tighter">ID: {item.id.toString().padStart(4, '0')}</div>
                                             </td>
                                             <td className="p-4 text-center font-bold text-xs">
-                                                <span className={`font-mono ${item.quantity <= 5 ? 'text-red-500' : 'text-txt-primary'}`}>{item.quantity}</span>
+                                                <span className={`font-mono ${item.quantity <= (item.min_stock_alert || 5) ? 'text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100' : 'text-txt-primary'}`}>
+                                                    {item.quantity}
+                                                </span>
                                             </td>
                                             <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost)}</td>
                                             <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost * (item.pack_size || 1))}</td>
@@ -621,8 +617,12 @@ const Stock = () => {
                                             </td>
                                             <td className="p-4 text-right pr-6">
                                                 <div className="flex gap-2 justify-end">
-                                                    <button onClick={() => openEditModal(item)} className="p-1.5 text-gray-400 hover:text-void"><span className="material-icons text-sm">edit</span></button>
-                                                    <button onClick={() => handleSellClick(item)} className="p-1.5 text-gray-400 hover:text-green-600"><span className="material-icons text-sm">shopping_cart</span></button>
+                                                    <button onClick={() => openEditModal(item)} className="p-1.5 text-gray-400 hover:text-accent transition-colors">
+                                                        <span className="material-icons text-sm">edit</span>
+                                                    </button>
+                                                    <button onClick={() => handleDeleteClick(item)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+                                                        <span className="material-icons text-sm">delete</span>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -682,19 +682,37 @@ const Stock = () => {
                             <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="col-span-1">
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Costo Unit.</label>
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
                         </div>
-                        <div>
+                        <div className="col-span-1">
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Unid.</label>
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemSellingPrice} onChange={e => setNewItemSellingPrice(e.target.value)} required />
                         </div>
-                        <div>
+                        <div className="col-span-1">
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Venta Pack</label>
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
                         </div>
+                        <div className="col-span-1">
+                            <label className="text-xs font-bold text-accent uppercase block mb-1">Stock Alerta</label>
+                            <input type="number" className="w-full p-3 bg-accent/5 border border-accent/20 text-accent rounded-xl outline-none font-bold" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} required />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Categoría</label>
+                        <select
+                            className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none"
+                            value={newItemCategoryId}
+                            onChange={e => setNewItemCategoryId(e.target.value)}
+                        >
+                            <option value="">Sin Categoría</option>
+                            {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Multi-Format Section */}

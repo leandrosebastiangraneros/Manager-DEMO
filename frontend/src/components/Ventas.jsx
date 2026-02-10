@@ -296,20 +296,22 @@ const Ventas = () => {
                                                             <div className="relative group/pack w-full">
                                                                 <button
                                                                     onClick={() => {
-                                                                        if (product.formats?.length > 0) {
-                                                                            // Si hay varios formatos, abrimos selector (podemos usar un dropdown simple de CSS hover)
-                                                                        } else {
+                                                                        if (!product.formats || product.formats.length === 0) {
                                                                             updateCart(product.id, (cart[`${product.id}_pack`] || 0) + 1, 'pack');
                                                                         }
                                                                     }}
-                                                                    className="w-full py-2 px-1 bg-accent text-void hover:opacity-90 rounded-lg text-[10px] font-black transition-all flex flex-col items-center justify-center border border-panel-border/10"
+                                                                    className={`w-full py-2 px-1 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border border-panel-border/10 ${product.formats?.length > 0 ? 'bg-indigo-600 text-white cursor-default' : 'bg-accent text-void hover:opacity-90'}`}
                                                                 >
-                                                                    <span>PACK {product.formats?.length > 0 ? '...' : `x${product.pack_size}`}</span>
+                                                                    <span className="flex items-center gap-1">
+                                                                        PACK {product.formats?.length > 0 ? 'MULTI' : `x${product.pack_size}`}
+                                                                        {product.formats?.length > 0 && <span className="material-icons text-[12px]">expand_less</span>}
+                                                                    </span>
                                                                 </button>
 
                                                                 {/* Dropdown de Formatos */}
                                                                 {product.formats?.length > 0 && (
-                                                                    <div className="absolute bottom-full left-0 w-full bg-surface border border-panel-border rounded-xl shadow-2xl z-50 mb-1 hidden group-hover/pack:block animate-fadeIn overflow-hidden">
+                                                                    <div className="absolute bottom-full left-0 w-full bg-surface border-2 border-indigo-500 rounded-xl shadow-2xl z-50 mb-1 hidden group-hover/pack:block animate-fadeIn overflow-hidden">
+                                                                        <div className="bg-indigo-500 text-white text-[8px] font-bold py-1 px-2 uppercase text-center">Seleccionar Formato</div>
                                                                         {/* Legacy Option if exists */}
                                                                         {product.pack_size > 1 && (
                                                                             <button
