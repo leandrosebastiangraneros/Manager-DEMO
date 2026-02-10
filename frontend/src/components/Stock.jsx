@@ -730,8 +730,8 @@ const Stock = () => {
             {/* Modals */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-lg p-6">
                 <h2 className="text-xl font-bold mb-6">{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-                <form onSubmit={handleEditSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleEditSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto px-1 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Marca</label>
                             <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemBrand} onChange={e => setNewItemBrand(e.target.value)} />
@@ -741,7 +741,7 @@ const Stock = () => {
                             <input type="text" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemName} onChange={e => setNewItemName(e.target.value)} required />
                         </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         <div className="col-span-1">
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Costo Unit.</label>
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemCost} onChange={e => setNewItemCost(e.target.value)} required />
@@ -755,8 +755,8 @@ const Stock = () => {
                             <input type="number" className="w-full p-3 bg-surface-highlight border border-panel-border/10 text-txt-primary rounded-xl outline-none" value={newItemPackPrice} onChange={e => setNewItemPackPrice(e.target.value)} />
                         </div>
                         <div className="col-span-1">
-                            <label className="text-xs font-bold text-accent uppercase block mb-1">Stock Alerta</label>
-                            <input type="number" className="w-full p-3 bg-accent/5 border border-accent/20 text-accent rounded-xl outline-none font-bold" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} required />
+                            <label className="text-[10px] md:text-xs font-bold text-accent uppercase block mb-1">Alert. Stock</label>
+                            <input type="number" className="w-full p-3 bg-accent/5 border border-accent/20 text-accent rounded-xl outline-none font-bold text-sm" value={minStockAlert} onChange={e => setMinStockAlert(e.target.value)} required />
                         </div>
                     </div>
 
@@ -801,8 +801,8 @@ const Stock = () => {
                             ))}
                         </div>
 
-                        <div className="grid grid-cols-12 gap-2 bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
-                            <div className="col-span-3">
+                        <div className="grid grid-cols-2 md:grid-cols-12 gap-2 bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
+                            <div className="col-span-1 md:col-span-3">
                                 <input
                                     type="number"
                                     placeholder="Cant."
@@ -811,7 +811,7 @@ const Stock = () => {
                                     onChange={e => setFormatPackSize(e.target.value)}
                                 />
                             </div>
-                            <div className="col-span-4">
+                            <div className="col-span-1 md:col-span-4">
                                 <input
                                     type="number"
                                     placeholder="Precio"
@@ -820,7 +820,7 @@ const Stock = () => {
                                     onChange={e => setFormatPackPrice(e.target.value)}
                                 />
                             </div>
-                            <div className="col-span-3">
+                            <div className="col-span-1 md:col-span-3">
                                 <input
                                     type="text"
                                     placeholder="Etiqueta"
@@ -829,7 +829,7 @@ const Stock = () => {
                                     onChange={e => setFormatLabel(e.target.value)}
                                 />
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-1 md:col-span-2">
                                 <button
                                     type="button"
                                     onClick={addFormatToItem}
@@ -880,7 +880,7 @@ const Stock = () => {
                     </div>
                 </form>
             </Modal>
-        </div>
+        </div >
     );
 };
 

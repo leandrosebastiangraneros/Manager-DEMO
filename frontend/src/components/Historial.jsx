@@ -112,11 +112,11 @@ const Historial = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50/50 text-txt-dim text-[10px] uppercase font-bold tracking-widest border-b border-gray-100/10">
-                                <th className="p-5 pl-8">Timestamp</th>
-                                <th className="p-5">Módulo</th>
-                                <th className="p-5">Acción</th>
-                                <th className="p-5">Descripción Detallada</th>
-                                <th className="p-5 text-right pr-8">Metadata</th>
+                                <th className="p-3 md:p-5 pl-4 md:pl-8 text-[9px] md:text-[10px]">Timestamp</th>
+                                <th className="p-3 md:p-5 text-[9px] md:text-[10px]">Módulo</th>
+                                <th className="p-3 md:p-5 text-[9px] md:text-[10px]">Acción</th>
+                                <th className="p-3 md:p-5 text-[9px] md:text-[10px]">Descripción Detallada</th>
+                                <th className="p-3 md:p-5 text-right pr-4 md:pr-8 text-[9px] md:text-[10px]">Metadata</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50/30">
@@ -132,37 +132,37 @@ const Historial = () => {
                             ) : (
                                 filteredMovements.map((m) => (
                                     <tr key={m.id} className="hover:bg-gray-50/5 transition-colors group">
-                                        <td className="p-5 pl-8 text-txt-dim font-mono text-xs whitespace-nowrap">
-                                            {formatDate(m.created_at)}
+                                        <td className="p-3 md:p-5 pl-4 md:pl-8 text-txt-dim font-mono text-[9px] md:text-xs whitespace-nowrap">
+                                            {formatDate(m.created_at).split(',')[0]}<span className="hidden md:inline">,{formatDate(m.created_at).split(',')[1]}</span>
                                         </td>
-                                        <td className="p-5">
+                                        <td className="p-3 md:p-5">
                                             <span className={`
-                                                inline-flex items-center gap-1.5 px-3 py-1 border rounded-full text-[10px] font-black tracking-tighter
+                                                inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-0.5 md:py-1 border rounded-full text-[8px] md:text-[10px] font-black tracking-tighter
                                                 ${getCategoryStyles(m.category)}
                                             `}>
                                                 <span className="material-icons text-[12px]">{getIcon(m.category)}</span>
                                                 {m.category}
                                             </span>
                                         </td>
-                                        <td className="p-5">
-                                            <span className="text-txt-primary font-mono text-[11px] font-bold bg-surface-highlight p-1 px-2 rounded-md border border-panel-border">
+                                        <td className="p-3 md:p-5">
+                                            <span className="text-txt-primary font-mono text-[9px] md:text-[11px] font-bold bg-surface-highlight p-1 px-1.5 rounded border border-panel-border">
                                                 {m.action}
                                             </span>
                                         </td>
-                                        <td className="p-5 text-txt-primary font-medium text-sm">
+                                        <td className="p-3 md:p-5 text-txt-primary font-medium text-[11px] md:text-sm max-w-[150px] md:max-w-none break-words">
                                             {m.description}
                                         </td>
-                                        <td className="p-5 text-right pr-8">
+                                        <td className="p-3 md:p-5 text-right pr-4 md:pr-8">
                                             {m.metadata && Object.keys(m.metadata).length > 0 ? (
                                                 <div className="flex justify-end gap-1 flex-wrap">
                                                     {Object.entries(m.metadata).map(([key, val]) => (
-                                                        <span key={key} className="text-[9px] bg-surface-highlight text-txt-dim px-2 py-0.5 rounded font-mono border border-panel-border/50" title={`${key}: ${val}`}>
-                                                            {key}: {typeof val === 'number' ? val.toLocaleString() : val}
+                                                        <span key={key} className="text-[8px] md:text-[9px] bg-surface-highlight text-txt-dim px-1.5 py-0.5 rounded font-mono border border-panel-border/50" title={`${key}: ${val}`}>
+                                                            <span className="opacity-50 lowercase">{key}:</span> {typeof val === 'number' ? val.toLocaleString() : val}
                                                         </span>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] text-gray-300 italic font-mono">- none -</span>
+                                                <span className="text-[9px] md:text-[10px] text-gray-300 italic font-mono">-</span>
                                             )}
                                         </td>
                                     </tr>
