@@ -34,13 +34,51 @@ app = FastAPI(title="NovaManager Commercial - API", root_path=root_path)
 
 # --- HEALTH CHECK ---
 @app.get("/health")
-def health_check(db: Session = Depends(get_db)):
+def health_check():
+    # Diagnostic Info
+    from database import SQLALCHEMY_DATABASE_URL
+    
+    db_type = "UNKNOWN"
+    if "sqlite" in SQLALCHEMY_DATABASE_URL: db_type = "SQLITE (Local/Fallback)"
+    elif "postgres" in SQLALCHEMY_DATABASE_URL: db_type = "POSTGRES (Neon/Vercel)"
+    
+    # Masked URL
+    masked_url = SQLALCHEMY_DATABASE_URL
+    if "@" in masked_url:
+        part1 = masked_url.split("@")[0]
+        part2 = masked_url.split("@")[1]
+        masked_url = f"{part1[:15]}...@{part2}"
+        
+    env_vars = {
+        "POSTGRES_PRISMA_URL": "SET" if os.getenv("POSTGRES_PRISMA_URL") else "MISSING",
+        "POSTGRES_URL_NON_POOLING": "SET" if os.getenv("POSTGRES_URL_NON_POOLING") else "MISSING",
+        "POSTGRES_URL": "SET" if os.getenv("POSTGRES_URL") else "MISSING",
+        "DATABASE_URL": "SET" if os.getenv("DATABASE_URL") else "MISSING",
+        "VERCEL": "YES" if os.getenv("VERCEL") else "NO",
+        "ROOT_PATH": app.root_path
+    }
+
     try:
-        # Intentar una consulta simple
+        # Intentar conectar
+        db = SessionLocal()
         db.execute("SELECT 1")
-        return {"status": "ONLINE", "database": "CONNECTED", "environment": "VERCEL" if os.getenv("VERCEL") else "LOCAL"}
+        db.close()
+        return {
+            "status": "ONLINE", 
+            "db_connection": "SUCCESS", 
+            "db_type": db_type,
+            "masked_url": masked_url,
+            "env_vars": env_vars
+        }
     except Exception as e:
-        return {"status": "ERROR", "database": str(e), "environment": "VERCEL" if os.getenv("VERCEL") else "LOCAL"}
+        return {
+            "status": "ERROR", 
+            "db_connection": "FAILED", 
+            "error_detail": str(e),
+            "db_type": db_type,
+            "masked_url": masked_url,
+            "env_vars": env_vars
+        }
 
 # CORS
 app.add_middleware(
