@@ -8,6 +8,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
         { id: 'caja', label: 'Caja y Ventas', icon: 'shopping_cart' },
         { id: 'inventario', label: 'Inventario', icon: 'inventory_2' },
         { id: 'gastos', label: 'Gastos y Reportes', icon: 'analytics' },
+        { id: 'movimientos', label: 'Movimientos', icon: 'history_toggle_off' },
         { id: 'ajustes', label: 'Ajustes', icon: 'settings' },
     ];
 

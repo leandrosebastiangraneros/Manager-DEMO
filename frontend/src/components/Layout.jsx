@@ -72,6 +72,7 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                     { id: 'inicio', label: 'Inicio', icon: 'dashboard' },
                     { id: 'caja', label: 'Caja', icon: 'shopping_cart' },
                     { id: 'inventario', label: 'Stock', icon: 'inventory_2' },
+                    { id: 'movimientos', label: 'Log', icon: 'history_toggle_off' },
                     { id: 'gastos', label: 'Gastos', icon: 'analytics' },
                 ].map((item) => (
                     <button
