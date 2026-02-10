@@ -426,6 +426,16 @@ def generate_accounting_report(month: int, year: int, db: Session = Depends(get_
     return FileResponse(filepath, filename=filename, media_type='application/pdf')
 
 # --- SYSTEM MANAGEMENT ---
+@app.get("/api/fix-db-schema")
+def fix_db_schema(db: Session = Depends(get_db)):
+    try:
+        # Add missing columns manually
+        db.execute(func.text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS selling_price FLOAT;"))
+        db.commit()
+        return {"status": "SUCCESS", "message": "Schema patched: Added selling_price to stock_items."}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
 @app.post("/reset-db")
 def reset_database(db: Session = Depends(get_db)):
     # Option 2: Drop all tables and recreate them (Cleanest Factory Reset)
