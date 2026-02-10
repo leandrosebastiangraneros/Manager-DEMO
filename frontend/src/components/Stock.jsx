@@ -201,10 +201,10 @@ const Stock = () => {
 
                     return (
                         <div key={category.id || 'none'} className="space-y-3">
-                            <h2 className="text-gray-400 font-bold text-xs uppercase tracking-wider flex items-center gap-3 pl-1">
-                                <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                            <h2 className="text-txt-dim font-bold text-xs uppercase tracking-wider flex items-center gap-3 pl-1 mb-4 border-b border-panel-border pb-2">
+                                <span className="material-icons text-sm">category</span>
                                 {category.name}
-                                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{categoryItems.length} items</span>
+                                <span className="text-[10px] bg-surface-highlight text-txt-primary px-2 py-0.5 rounded-full border border-panel-border">{categoryItems.length} items</span>
                             </h2>
 
                             <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden">
@@ -239,7 +239,17 @@ const Stock = () => {
                                                     {formatMoney(item.selling_price - item.unit_cost)}
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <StatusBadge status={item.status === 'AVAILABLE' ? 'En Stock' : 'Agotado'} />
+                                                    {(() => {
+                                                        let statusConfig = { color: 'bg-green-500/10 text-green-500 border-green-500/20', text: 'En Stock' };
+                                                        if (item.quantity === 0) statusConfig = { color: 'bg-red-500/10 text-red-500 border-red-500/20', text: 'Agotado' };
+                                                        else if (item.quantity <= 5) statusConfig = { color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', text: 'Poco Stock' };
+
+                                                        return (
+                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusConfig.color} inline-block min-w-[80px]`}>
+                                                                {statusConfig.text}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="p-4 text-center pr-6">
                                                     <div className="flex gap-2 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -338,7 +348,7 @@ const Stock = () => {
                             <input
                                 autoFocus
                                 type="text"
-                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
+                                className="w-full px-4 py-3 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
                                 placeholder="ej. Cerveza Patagonia"
                                 value={newItemName}
                                 onChange={e => setNewItemName(e.target.value)}
@@ -348,7 +358,7 @@ const Stock = () => {
                         <div>
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
                             <select
-                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all"
+                                className="w-full px-4 py-3 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all appearance-none"
                                 value={newItemCategoryId}
                                 onChange={e => setNewItemCategoryId(e.target.value)}
                             >
@@ -365,7 +375,7 @@ const Stock = () => {
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cantidad</label>
                             <input
                                 type="number"
-                                className="w-full px-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                className="w-full px-4 py-3 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                 value={newItemQuantity}
                                 onChange={e => setNewItemQuantity(e.target.value)}
                                 required
@@ -377,7 +387,7 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemCost}
                                     onChange={e => setNewItemCost(e.target.value)}
@@ -391,7 +401,7 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight/10 border border-gray-200/20 rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
+                                    className="w-full pl-8 pr-4 py-3 bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}
