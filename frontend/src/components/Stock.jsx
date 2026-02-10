@@ -366,7 +366,8 @@ const Stock = () => {
                             <input
                                 autoFocus
                                 type="text"
-                                className="w-full px-4 h-[50px] bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
+                                style={{ height: '50px' }}
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
                                 placeholder="ej. Cerveza Patagonia"
                                 value={newItemName}
                                 onChange={e => setNewItemName(e.target.value)}
@@ -376,7 +377,8 @@ const Stock = () => {
                         <div>
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
                             <select
-                                className="w-full px-4 h-[50px] bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all appearance-none"
+                                style={{ height: '50px' }}
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all appearance-none"
                                 value={newItemCategoryId}
                                 onChange={e => setNewItemCategoryId(e.target.value)}
                             >
@@ -393,7 +395,8 @@ const Stock = () => {
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cantidad</label>
                             <input
                                 type="number"
-                                className="w-full px-4 h-[50px] bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                style={{ height: '50px' }}
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                 value={newItemQuantity}
                                 onChange={e => setNewItemQuantity(e.target.value)}
                                 required
@@ -405,7 +408,8 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 h-[50px] bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                    style={{ height: '50px' }}
+                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemCost}
                                     onChange={e => setNewItemCost(e.target.value)}
@@ -419,7 +423,8 @@ const Stock = () => {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
                                 <input
                                     type="number"
-                                    className="w-full pl-8 pr-4 h-[50px] bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
+                                    style={{ height: '50px' }}
+                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
                                     placeholder="0.00"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}

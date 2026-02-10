@@ -477,15 +477,27 @@ def reset_database(db: Session = Depends(get_db)):
         models.Base.metadata.drop_all(bind=engine)
         models.Base.metadata.create_all(bind=engine)
         
-        # Initialize default categories
-        sale_cat = models.Category(name="Venta de Bebidas", type="INCOME")
-        purchase_cat = models.Category(name="Compra de Mercadería", type="EXPENSE")
+        # Initialize default Beverage Distributor categories
+        categories = [
+            {"name": "Gaseosas", "type": "PRODUCT"},
+            {"name": "Cervezas", "type": "PRODUCT"},
+            {"name": "Vinos y Espumantes", "type": "PRODUCT"},
+            {"name": "Aguas y Jugos", "type": "PRODUCT"},
+            {"name": "Destilados", "type": "PRODUCT"},
+            {"name": "Comida / Snacks", "type": "PRODUCT"},
+            {"name": "Venta de Bebidas", "type": "INCOME"},
+            {"name": "Compra de Mercadería", "type": "EXPENSE"},
+            {"name": "Gastos Fijos", "type": "EXPENSE"},
+            {"name": "Otros Ingresos", "type": "INCOME"}
+        ]
         
-        db.add(sale_cat)
-        db.add(purchase_cat)
+        for cat_data in categories:
+            cat = models.Category(**cat_data)
+            db.add(cat)
+        
         db.commit()
         
-        return {"message": "Database reset successfully"}
+        return {"message": "Database reset successfully with ALL categories"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
