@@ -335,7 +335,7 @@ const Stock = () => {
 
                 {/* SECTION 1: REPLENISHMENT FORM (LEFT PANEL) */}
                 <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
-                    <GlassContainer className="p-5 border-panel-border/10 flex flex-col h-full bg-surface shadow-xl relative">
+                    <div className="p-5 border border-panel-border/5 flex flex-col h-full bg-surface rounded-3xl shadow-2xl relative">
                         <div className="flex items-center gap-2 mb-4">
                             <div className="w-2 h-6 bg-accent rounded-full"></div>
                             <h2 className="text-xs font-black uppercase tracking-widest text-txt-primary">Ingreso de Mercadería</h2>
@@ -419,7 +419,7 @@ const Stock = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsPack(!isPack)}
-                                                    className={`flex-1 p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${isPack ? 'bg-void text-white border-void shadow-lg' : 'bg-surface-highlight text-txt-dim border-panel-border/10'}`}
+                                                    className={`flex-1 p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${isPack ? 'bg-accent text-void border-accent shadow-lg' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:bg-accent/5'}`}
                                                 >
                                                     {isPack ? 'Modo Pack' : 'Individual'}
                                                 </button>
@@ -468,7 +468,7 @@ const Stock = () => {
 
                                 </div>
 
-                                <button type="submit" className="w-full py-4 bg-void text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-accent hover:text-void transition-all shadow-xl active:scale-[0.98] mt-2">
+                                <button type="submit" className="w-full py-4 bg-accent text-void rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-accent/80 transition-all shadow-xl active:scale-[0.98] mt-2">
                                     Añadir al Borrador
                                 </button>
                             </form>
@@ -501,7 +501,7 @@ const Stock = () => {
                                 </div>
                             )}
                         </div>
-                    </GlassContainer>
+                    </div>
                 </div>
 
                 {/* SECTION 2: INVENTORY TABLE */}
@@ -654,10 +654,10 @@ const Stock = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* EDIT MODAL */}
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-2xl p-0 overflow-hidden rounded-3xl">
+            < Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} className="max-w-2xl p-0 overflow-hidden rounded-3xl" >
                 <div className="flex flex-col bg-surface overflow-hidden">
                     <div className="p-8 bg-void text-white flex items-center justify-between shadow-xl">
                         <div>
@@ -719,10 +719,10 @@ const Stock = () => {
                         </div>
                     </form>
                 </div>
-            </Modal>
+            </Modal >
 
             {/* QUICK SELL MODAL */}
-            <Modal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} className="max-w-md p-0 overflow-hidden rounded-3xl">
+            < Modal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} className="max-w-md p-0 overflow-hidden rounded-3xl" >
                 <div className="p-8 bg-surface">
                     <div className="flex items-center gap-4 mb-8">
                         <div className="w-14 h-14 bg-green-500/10 text-green-600 rounded-2xl flex items-center justify-center shadow-inner">
@@ -755,8 +755,8 @@ const Stock = () => {
                         </div>
                     </form>
                 </div>
-            </Modal>
-        </div>
+            </Modal >
+        </div >
     );
 };
 
