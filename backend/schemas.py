@@ -33,7 +33,7 @@ class StockItemBase(BaseModel):
     name: str
     cost_amount: float
     initial_quantity: float
-    selling_price: float
+    selling_price: Optional[float] = None
     category_id: Optional[int] = None
 
 class StockItemCreate(StockItemBase):
