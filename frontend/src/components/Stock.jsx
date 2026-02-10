@@ -300,8 +300,8 @@ const Stock = () => {
                 <div className="xl:col-span-1 space-y-6">
                     <GlassContainer className="p-6 border-panel-border relative overflow-visible">
                         <div className="flex items-center gap-2 mb-6">
-                            <span className="material-icons text-void">app_registration</span>
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-void">Ingreso de Mercadería</h2>
+                            <span className="material-icons text-accent">app_registration</span>
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-accent">Ingreso de Mercadería</h2>
                         </div>
 
                         <form onSubmit={addToDraft} className="space-y-4">
@@ -395,6 +395,20 @@ const Stock = () => {
                                 )}
                             </div>
 
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Categoría</label>
+                                <select
+                                    className="w-full px-3 py-3 bg-surface-highlight border border-panel-border rounded-xl text-xs outline-none text-txt-primary"
+                                    value={newItemCategoryId}
+                                    onChange={e => setNewItemCategoryId(e.target.value)}
+                                >
+                                    <option value="">Seleccionar Categoría</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{isPack ? 'Cant. Packs' : 'Cantidad'}</label>
@@ -444,17 +458,17 @@ const Stock = () => {
 
                             {/* Cost Comparison Helper */}
                             {(parseFloat(newItemCost) > 0 && parseFloat(newItemQuantity) > 0) && (
-                                <div className="p-3 bg-void/5 rounded-xl border border-void/10 space-y-2 animate-fadeIn">
+                                <div className="p-3 bg-surface-highlight rounded-xl border border-panel-border/20 space-y-2 animate-fadeIn">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[9px] font-bold text-void uppercase">Costo Unitario:</span>
-                                        <span className="text-xs font-mono font-bold text-void">
+                                        <span className="text-[9px] font-bold text-txt-dim uppercase">Costo Unitario:</span>
+                                        <span className="text-xs font-mono font-bold text-txt-primary">
                                             {formatMoney(parseFloat(newItemCost) / (isPack ? (parseFloat(newItemQuantity) * parseFloat(packSize)) : parseFloat(newItemQuantity)))}
                                         </span>
                                     </div>
                                     {isPack && (
-                                        <div className="flex justify-between items-center border-t border-void/5 pt-2">
-                                            <span className="text-[9px] font-bold text-void uppercase">Costo Pack:</span>
-                                            <span className="text-xs font-mono font-bold text-void">
+                                        <div className="flex justify-between items-center border-t border-panel-border/10 pt-2">
+                                            <span className="text-[9px] font-bold text-txt-dim uppercase">Costo Pack:</span>
+                                            <span className="text-xs font-mono font-bold text-txt-primary">
                                                 {formatMoney((parseFloat(newItemCost) / parseFloat(newItemQuantity)))}
                                             </span>
                                         </div>
@@ -462,7 +476,7 @@ const Stock = () => {
                                 </div>
                             )}
 
-                            <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-md bg-accent text-void transition-standard hover:opacity-90">
+                            <Button type="submit" variant="secondary" className="w-full py-4 text-xs font-black shadow-md bg-accent text-surface transition-standard hover:opacity-90">
                                 AGREGAR A LA LISTA
                             </Button>
                         </form>
@@ -518,8 +532,10 @@ const Stock = () => {
                                     <tr className="bg-surface-highlight/30 text-txt-dim text-[10px] font-bold uppercase border-b border-panel-border">
                                         <th className="p-4 pl-6">Producto</th>
                                         <th className="p-4 text-center">Stock</th>
-                                        <th className="p-4 text-right">Costo</th>
-                                        <th className="p-4 text-right">Venta</th>
+                                        <th className="p-4 text-right">Costo U.</th>
+                                        <th className="p-4 text-right">Costo P.</th>
+                                        <th className="p-4 text-right">Venta U.</th>
+                                        <th className="p-4 text-right">Venta P.</th>
                                         <th className="p-4 text-center">Estado</th>
                                         <th className="p-4 text-right pr-6">Acciones</th>
                                     </tr>
@@ -534,11 +550,15 @@ const Stock = () => {
                                                 </div>
                                                 <div className="text-[9px] text-gray-400 font-mono tracking-tighter">ID: {item.id.toString().padStart(4, '0')}</div>
                                             </td>
-                                            <td className="p-4 text-center">
-                                                <span className={`font-mono font-bold ${item.quantity <= 5 ? 'text-red-500' : 'text-txt-primary'}`}>{item.quantity}</span>
+                                            <td className="p-4 text-center font-bold text-xs">
+                                                <span className={`font-mono ${item.quantity <= 5 ? 'text-red-500' : 'text-txt-primary'}`}>{item.quantity}</span>
                                             </td>
-                                            <td className="p-4 text-right font-mono text-xs">{formatMoney(item.unit_cost)}</td>
-                                            <td className="p-4 text-right font-mono font-bold text-sm text-green-600">{formatMoney(item.selling_price)}</td>
+                                            <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost)}</td>
+                                            <td className="p-4 text-right font-mono text-[10px] text-txt-dim">{formatMoney(item.unit_cost * (item.pack_size || 1))}</td>
+                                            <td className="p-4 text-right font-mono font-bold text-xs text-green-600">{formatMoney(item.selling_price)}</td>
+                                            <td className="p-4 text-right font-mono font-bold text-xs text-blue-600">
+                                                {formatMoney(item.pack_price || (item.selling_price * (item.pack_size || 1)))}
+                                            </td>
                                             <td className="p-4 text-center">
                                                 <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
                                             </td>
@@ -564,7 +584,10 @@ const Stock = () => {
                                                 {item.brand ? <span className="text-gray-400 font-medium mr-1">{item.brand}</span> : ''}
                                                 {item.name}
                                             </h3>
-                                            <p className="text-[10px] text-gray-400 font-mono">{formatMoney(item.selling_price)}</p>
+                                            <div className="flex gap-2 text-[9px] font-mono mt-1">
+                                                <span className="text-green-600 bg-green-50 px-1 rounded">U: {formatMoney(item.selling_price)}</span>
+                                                <span className="text-blue-600 bg-blue-50 px-1 rounded">P: {formatMoney(item.pack_price || (item.selling_price * item.pack_size))}</span>
+                                            </div>
                                         </div>
                                         <StatusBadge status={item.quantity > 0 ? 'En Stock' : 'Agotado'} />
                                     </div>
