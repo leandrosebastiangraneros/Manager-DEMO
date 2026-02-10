@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 import os
 from dotenv import load_dotenv
@@ -40,8 +41,12 @@ connect_args = {}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
     connect_args = {"check_same_thread": False}
 
+# Use NullPool to disable SQLAlchemy pooling (let Supabase/PgBouncer handle it)
+# This is crucial for Serverless functions to avoid "prepared statement" errors and connection limits
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args=connect_args,
+    poolclass=NullPool
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
