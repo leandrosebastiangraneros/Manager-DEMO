@@ -189,7 +189,7 @@ const Ventas = () => {
     );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-10 h-full overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-32 h-full overflow-hidden">
 
             {/* Left: Product Selection Area */}
             <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
@@ -515,7 +515,7 @@ const Ventas = () => {
 
             {/* Right: Cart/Summary Panel */}
             <div className="lg:col-span-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col bg-surface rounded-[2rem] shadow-2xl overflow-hidden border border-panel-border/10 relative">
+                <div className="flex-1 flex flex-col bg-surface rounded-t-[2rem] lg:rounded-[2rem] shadow-2xl overflow-hidden border border-panel-border/10 relative">
                     {/* Cart Header */}
                     <div className="p-6 bg-surface border-b border-panel-border/10 flex justify-between items-center z-10 shrink-0">
                         <div>
