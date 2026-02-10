@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import { Toaster } from 'sonner';
 import ThemeToggle from './common/ThemeToggle';
+import { API_URL } from '../config';
 
 const Layout = ({ children, activeTab, setActiveTab }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -11,12 +12,12 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
     React.useEffect(() => {
         const checkAndSeed = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/categories`);
+                const res = await fetch(`${API_URL}/categories`);
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data) && data.length === 0) {
                         console.log("No categories found. Auto-seeding...");
-                        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/seed-categories`);
+                        await fetch(`${API_URL}/seed-categories`);
                         window.location.reload(); // Reload to reflect changes
                     }
                 }
