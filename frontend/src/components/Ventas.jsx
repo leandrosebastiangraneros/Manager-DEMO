@@ -274,21 +274,30 @@ const Ventas = () => {
                                 if (!product) return null;
                                 return (
                                     <div key={id} className="flex items-center gap-4 group">
-                                        {/* Qty Controls */}
-                                        <div className="flex flex-col items-center bg-surface rounded-lg shadow-sm border border-gray-100/10 overflow-hidden w-8">
-                                            <button
-                                                onClick={() => updateCart(product.id, qty + 1)}
-                                                className="w-8 h-7 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors"
-                                            >
-                                                <span className="material-icons text-[10px]">keyboard_arrow_up</span>
-                                            </button>
-                                            <div className="text-xs font-bold font-mono text-txt-primary py-0.5">{qty}</div>
-                                            <button
-                                                onClick={() => updateCart(product.id, qty - 1)}
-                                                className="w-8 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
-                                            >
-                                                <span className="material-icons text-[10px]">keyboard_arrow_down</span>
-                                            </button>
+                                        {/* Qty Controls - Manual Input */}
+                                        <div className="flex flex-col items-center bg-surface rounded-lg shadow-sm border border-gray-100/10 overflow-hidden w-12">
+                                            <input
+                                                type="number"
+                                                className="w-full text-center h-10 text-xs font-bold font-mono text-txt-primary bg-transparent outline-none border-b border-gray-100"
+                                                value={qty}
+                                                onChange={(e) => updateCart(product.id, e.target.value)}
+                                                min="0.1"
+                                                step="0.1"
+                                            />
+                                            <div className="flex w-full">
+                                                <button
+                                                    onClick={() => updateCart(product.id, qty + 1)}
+                                                    className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-surface-highlight hover:text-txt-primary transition-colors border-r border-gray-100"
+                                                >
+                                                    <span className="material-icons text-[10px]">add</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => updateCart(product.id, Math.max(0, qty - 1))}
+                                                    className="flex-1 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-black transition-colors"
+                                                >
+                                                    <span className="material-icons text-[10px]">remove</span>
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="flex-1 min-w-0">

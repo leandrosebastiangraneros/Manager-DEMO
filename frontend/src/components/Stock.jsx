@@ -20,7 +20,10 @@ const Stock = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [newItemName, setNewItemName] = useState('');
-    const [newItemCost, setNewItemCost] = useState('');
+    const [newItemBrand, setNewItemBrand] = useState('');
+    const [isPack, setIsPack] = useState(false);
+    const [packSize, setPackSize] = useState('1');
+    const [newItemCost, setNewItemCost] = useState(''); // This will be "Cost por Pack" or "Costo Total"
     const [newItemQuantity, setNewItemQuantity] = useState('1');
     const [newItemSellingPrice, setNewItemSellingPrice] = useState('');
     const [newItemCategoryId, setNewItemCategoryId] = useState('');
@@ -80,6 +83,9 @@ const Stock = () => {
         setIsEditing(false);
         setEditingId(null);
         setNewItemName('');
+        setNewItemBrand('');
+        setIsPack(false);
+        setPackSize('1');
         setNewItemCost('');
         setNewItemQuantity('1');
         setNewItemSellingPrice('');
@@ -110,6 +116,9 @@ const Stock = () => {
 
         const payload = {
             name: newItemName,
+            brand: newItemBrand,
+            is_pack: isPack,
+            pack_size: parseFloat(packSize),
             cost_amount: cost,
             initial_quantity: qty,
             selling_price: sellPrice,
@@ -362,23 +371,36 @@ const Stock = () => {
                 <form onSubmit={handleAddSubmit} className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre del Producto</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Marca</label>
                             <input
-                                autoFocus
                                 type="text"
                                 style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all placeholder:text-txt-dim"
-                                placeholder="ej. Cerveza Patagonia"
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary transition-all"
+                                placeholder="ej. Quilmes / Pepsi"
+                                value={newItemBrand}
+                                onChange={e => setNewItemBrand(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre del Producto</label>
+                            <input
+                                type="text"
+                                style={{ height: '50px' }}
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary transition-all"
+                                placeholder="ej. Cerveza Lata 473ml"
                                 value={newItemName}
                                 onChange={e => setNewItemName(e.target.value)}
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
                             <select
                                 style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary transition-all appearance-none"
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary appearance-none"
                                 value={newItemCategoryId}
                                 onChange={e => setNewItemCategoryId(e.target.value)}
                             >
@@ -388,28 +410,56 @@ const Stock = () => {
                                 ))}
                             </select>
                         </div>
+                        <div>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Formato de Ingreso</label>
+                            <div className="flex bg-surface-highlight rounded-xl p-1 border border-panel-border">
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsPack(false); setPackSize('1'); }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isPack ? 'bg-black text-white shadow-sm' : 'text-txt-dim'}`}
+                                >INDIVIDUAL</button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPack(true)}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isPack ? 'bg-black text-white shadow-sm' : 'text-txt-dim'}`}
+                                >PACK / BULTO</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {isPack && (
+                            <div>
+                                <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Unid. x Pack</label>
+                                <input
+                                    type="number"
+                                    style={{ height: '50px' }}
+                                    className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
+                                    value={packSize}
+                                    onChange={e => setPackSize(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        )}
                         <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Cantidad</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">{isPack ? 'Cant. Packs' : 'Cantidad'}</label>
                             <input
                                 type="number"
                                 style={{ height: '50px' }}
-                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                className="w-full px-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
                                 value={newItemQuantity}
                                 onChange={e => setNewItemQuantity(e.target.value)}
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Costo Total</label>
+                        <div className={isPack ? 'col-span-1' : 'col-span-1'}>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">{isPack ? 'Costo x Pack' : 'Costo Total'}</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                                 <input
                                     type="number"
                                     style={{ height: '50px' }}
-                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary focus:ring-1 focus:ring-txt-primary outline-none text-txt-primary font-mono transition-all"
+                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-txt-primary outline-none text-txt-primary font-mono"
                                     placeholder="0.00"
                                     value={newItemCost}
                                     onChange={e => setNewItemCost(e.target.value)}
@@ -418,13 +468,13 @@ const Stock = () => {
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Precio Venta (Unit)</label>
+                            <label className="block text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Venta (Unid)</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold">$</span>
                                 <input
                                     type="number"
                                     style={{ height: '50px' }}
-                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-txt-primary font-mono transition-all"
+                                    className="w-full pl-8 pr-4 bg-surface-highlight border border-panel-border rounded-xl focus:border-green-500 outline-none text-txt-primary font-mono"
                                     placeholder="0.00"
                                     value={newItemSellingPrice}
                                     onChange={e => setNewItemSellingPrice(e.target.value)}
@@ -434,11 +484,22 @@ const Stock = () => {
                         </div>
                     </div>
 
-                    {newItemQuantity > 0 && newItemCost > 0 && (
-                        <div className="bg-surface-highlight/10 p-4 rounded-lg border border-gray-200/20 text-center">
-                            <p className="text-xs text-txt-dim">
-                                Costo Unitario Calculado: <span className="text-lg font-bold font-mono text-txt-primary block mt-1">{formatMoney(newItemCost / newItemQuantity)}</span>
-                            </p>
+                    {(newItemQuantity > 0 && newItemCost > 0) && (
+                        <div className="bg-surface-highlight/20 p-4 rounded-xl border border-panel-border/30 flex justify-around text-center">
+                            <div>
+                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Unidades Totales</span>
+                                <span className="text-sm font-bold font-mono">{parseFloat(newItemQuantity) * (isPack ? parseFloat(packSize) : 1)}</span>
+                            </div>
+                            <div className="border-x border-panel-border/10 px-8">
+                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Inversión Total</span>
+                                <span className="text-sm font-bold font-mono">{formatMoney(parseFloat(newItemCost) * (isPack ? parseFloat(newItemQuantity) : 1))}</span>
+                            </div>
+                            <div>
+                                <span className="text-[10px] text-txt-dim uppercase font-bold block">Costo Unitario</span>
+                                <span className="text-sm font-bold font-mono text-green-600">
+                                    {formatMoney((parseFloat(newItemCost) * (isPack ? parseFloat(newItemQuantity) : 1)) / (parseFloat(newItemQuantity) * (isPack ? parseFloat(packSize) : 1)))}
+                                </span>
+                            </div>
                         </div>
                     )}
 

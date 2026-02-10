@@ -31,6 +31,9 @@ class Transaction(TransactionBase):
 
 class StockItemBase(BaseModel):
     name: str
+    brand: Optional[str] = None
+    is_pack: bool = False
+    pack_size: float = 1.0
     cost_amount: float
     initial_quantity: float
     selling_price: Optional[float] = None

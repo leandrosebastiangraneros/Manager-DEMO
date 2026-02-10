@@ -153,17 +153,24 @@ const Dashboard = () => {
                 <div className="bg-surface rounded-xl shadow-sm border border-gray-100/10 overflow-hidden">
                     <div className="p-4 border-b border-gray-100/10 bg-surface-highlight/30 flex items-center gap-2">
                         <span className="material-icons text-gray-400 text-sm">history</span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Trace de Actividad</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Movimientos Recientes</span>
                     </div>
                     <div className="p-4 space-y-4">
-                        {activityFeed.map(act => (
-                            <div key={act.id} className="flex items-center gap-4 group">
-                                <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center text-txt-dim group-hover:bg-accent group-hover:text-white transition-all">
-                                    <span className="material-icons text-sm">{act.icon}</span>
+                        {!finances.recent_sales || finances.recent_sales.length === 0 ? (
+                            <div className="text-center py-6 text-gray-400 text-[10px] font-mono uppercase tracking-widest">Esperando transacciones...</div>
+                        ) : finances.recent_sales.map(act => (
+                            <div key={act.id} className="flex items-center gap-4 group border-b border-gray-50/5 pb-3 last:border-0 last:pb-0">
+                                <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center text-green-600 transition-all border border-panel-border/20 shadow-sm">
+                                    <span className="material-icons text-sm">shopping_cart</span>
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-xs font-bold text-txt-primary group-hover:text-txt-secondary transition-colors">{act.msg}</div>
-                                    <div className="text-[10px] text-gray-400 font-mono font-medium mt-0.5">{act.time}</div>
+                                    <div className="text-xs font-bold text-txt-primary group-hover:text-txt-secondary transition-colors line-clamp-1">{act.description}</div>
+                                    <div className="flex justify-between items-center mt-1">
+                                        <div className="text-[10px] text-gray-400 font-mono font-medium">#{act.id}</div>
+                                        {act.metadata && act.metadata.total && (
+                                            <div className="text-[11px] font-mono font-bold text-txt-primary">{formatMoney(act.metadata.total)}</div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

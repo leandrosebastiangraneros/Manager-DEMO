@@ -127,11 +127,16 @@ def get_dashboard_stats():
     income = sum(t["amount"] for t in transactions if t["type"] == "INCOME")
     expenses = sum(t["amount"] for t in transactions if t["type"] == "EXPENSE")
     
+    # NEW: Fetch last 3 movements of type VENTA
+    res_movements = supabase.table("app_movements").select("*").eq("category", "VENTA").order("created_at", desc=True).limit(3).execute()
+    recent_sales = res_movements.data or []
+    
     return {
         "income": income,
         "expenses": expenses,
         "balance": income - expenses,
         "month": now.strftime("%B"),
+        "recent_sales": recent_sales,
         "chart_data": [] 
     }
 
@@ -187,9 +192,11 @@ def create_stock_item(item: schemas.StockItemCreate):
         raise HTTPException(status_code=400, detail="Failed to create stock item")
     
     # LOG MOVEMENT
+    brand_info = f" [{item.brand}]" if item.brand else ""
+    pack_info = f" (Pack x{item.pack_size})" if item.is_pack else ""
     log_movement(
         "STOCK", "ALTA", 
-        f"Ingreso de producto: {item.name} ({item.initial_quantity} unidades)",
+        f"Ingreso: {item.name}{brand_info}{pack_info} - {item.initial_quantity} unidades",
         {"product_id": stock_res.data[0]["id"], "qty": item.initial_quantity}
     )
     
