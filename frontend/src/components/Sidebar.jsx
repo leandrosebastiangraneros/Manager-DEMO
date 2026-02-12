@@ -25,14 +25,15 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                 {/* Brand / Logo (Clean) */}
                 <div className="p-8 mb-4 mt-2 flex justify-center">
                     <div className={`
-                        flex items-center justify-center transition-all duration-500
+                        flex flex-col items-center justify-center transition-all duration-500
                         ${isCollapsed ? 'w-10 h-10' : 'w-full px-4 py-3'}
                     `}>
-                        <span className="material-icons text-txt-primary text-2xl">grid_view</span>
+                        <img src="/logo.svg" alt="Logo" className="w-16 h-16 object-contain mb-2" />
                         {!isCollapsed && (
-                            <div className="ml-3 font-display font-bold tracking-tighter text-lg uppercase flex items-center gap-2">
-                                GEST<span className="text-txt-primary/50">OR</span>
-                                <span className="text-[8px] bg-accent/20 text-accent px-1 rounded">v1.1</span>
+                            <div className="font-display font-bold tracking-tighter text-sm uppercase text-center leading-tight">
+                                CENTRO DE<br/>
+                                ABARATAMIENTO<br/>
+                                <span className="text-accent">MAYORISTA</span>
                             </div>
                         )}
                     </div>
