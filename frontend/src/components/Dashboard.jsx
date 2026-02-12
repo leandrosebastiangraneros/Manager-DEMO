@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { API_URL } from '../config';
+import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 
 const Dashboard = () => {
@@ -23,8 +24,8 @@ const Dashboard = () => {
 
             if (stockRes.ok) {
                 const items = await stockRes.json();
-                // Alert for products with low stock (< 5 units)
-                const alerts = items.filter(i => i.quantity < 5).map(i => ({
+                // Alert for products with low stock (uses product's min_stock_alert)
+                const alerts = items.filter(i => i.quantity <= (i.min_stock_alert || 5)).map(i => ({
                     id: i.id,
                     name: i.name,
                     qty: i.quantity,
@@ -33,11 +34,8 @@ const Dashboard = () => {
                 setStockAlerts(alerts);
             }
 
-            // Mock activity from Recent Sales (simplified for MVP)
-            setActivityFeed([
-                { id: 1, type: 'SALE', msg: 'Venta Directa Procesada', time: 'Recién', icon: 'shopping_bag' },
-                { id: 2, type: 'STOCK', msg: 'Nuevo ingreso de mercadería', time: 'Hace 2h', icon: 'inventory' },
-            ]);
+            // Activity feed is driven by recent_sales from dashboard-stats endpoint
+            // No mock data needed — the UI already renders finances.recent_sales
 
         } catch (err) {
             console.error("Dashboard error:", err);
@@ -50,7 +48,7 @@ const Dashboard = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const formatMoney = (val) => val.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+    // formatMoney imported from utils/formatters.js (null-safe)
 
     return (
         <div className="space-y-8 pb-12 animate-[fadeIn_0.5s_ease-out]">

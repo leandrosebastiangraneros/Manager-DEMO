@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDialog } from '../context/DialogContext';
 import { API_URL } from '../config';
+import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
 import Modal from './common/Modal';
@@ -12,7 +13,6 @@ const Stock = () => {
 
     // Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Form State for Add/Edit & Replenishment
@@ -71,10 +71,7 @@ const Stock = () => {
         fetchCategories();
     }, []);
 
-    const formatMoney = (val) => {
-        if (val === undefined || val === null || isNaN(val)) return '$ 0,00';
-        return val.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-    };
+    // formatMoney imported from utils/formatters.js (null-safe)
 
     // Auto-Calculations for the Form
     const calculatedUnitCost = useMemo(() => {

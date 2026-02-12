@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Layout from './components/Layout';
 import { DialogProvider } from './context/DialogContext';
+import ErrorBoundary from './components/common/ErrorBoundary';
 // Components
 import Dashboard from './components/Dashboard';
 import Historial from './components/Historial';
@@ -10,7 +11,7 @@ import Configuracion from './components/Configuracion';
 import Ventas from './components/Ventas';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('caja'); // Default: Caja y Ventas
+  const [activeTab, setActiveTab] = useState('caja');
 
   const renderContent = () => {
     switch (activeTab) {
@@ -34,7 +35,9 @@ function App() {
   return (
     <DialogProvider>
       <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-        {renderContent()}
+        <ErrorBoundary>
+          {renderContent()}
+        </ErrorBoundary>
       </Layout>
     </DialogProvider>
   );

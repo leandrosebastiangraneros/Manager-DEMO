@@ -57,13 +57,13 @@ export const DialogProvider = ({ children }) => {
             {alertState.isOpen && (
                 <div className="fixed top-24 right-4 z-[9999] animate-[slideInRight_0.3s_ease-out]">
                     <GlassContainer className={`p-0 min-w-[320px] max-w-md overflow-hidden flex shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-l-4 ${alertState.type === 'error' ? 'border-l-red-500 bg-red-500/5' :
-                            alertState.type === 'success' ? 'border-l-green-500 bg-green-500/5' :
-                                'border-l-accent bg-accent/5'
+                        alertState.type === 'success' ? 'border-l-green-500 bg-green-500/5' :
+                            'border-l-accent bg-accent/5'
                         }`}>
                         <div className="p-4 flex items-start gap-4 w-full">
                             <div className={`p-2 rounded-lg flex-none ${alertState.type === 'error' ? 'bg-red-500/10 text-red-500' :
-                                    alertState.type === 'success' ? 'bg-green-500/10 text-green-500' :
-                                        'bg-accent/10 text-accent'
+                                alertState.type === 'success' ? 'bg-green-500/10 text-green-500' :
+                                    'bg-accent/10 text-accent'
                                 }`}>
                                 <span className="material-icons text-xl">
                                     {alertState.type === 'error' ? 'error_outline' :
@@ -74,13 +74,13 @@ export const DialogProvider = ({ children }) => {
 
                             <div className="flex-1 py-1">
                                 <h4 className={`font-display font-bold text-sm uppercase tracking-wider mb-1 ${alertState.type === 'error' ? 'text-red-400' :
-                                        alertState.type === 'success' ? 'text-green-400' :
-                                            'text-accent'
+                                    alertState.type === 'success' ? 'text-green-400' :
+                                        'text-accent'
                                     }`}>
-                                    {alertState.type === 'error' ? 'SYSTEM ERROR' :
-                                        alertState.type === 'success' ? 'SUCCESS' : 'NOTIFICATION'}
+                                    {alertState.type === 'error' ? 'ERROR DEL SISTEMA' :
+                                        alertState.type === 'success' ? 'OPERACIÓN EXITOSA' : 'NOTIFICACIÓN'}
                                 </h4>
-                                <p className="text-white text-sm leading-snug font-mono">
+                                <p className="text-txt-primary text-sm leading-snug font-mono">
                                     {alertState.message}
                                 </p>
                             </div>
@@ -109,17 +109,17 @@ export const DialogProvider = ({ children }) => {
                                     {confirmState.title}
                                 </h2>
                                 <div className="text-[10px] uppercase font-mono text-txt-dim border border-white/10 px-2 py-1 rounded">
-                                    Confirm Req.
+                                    Confirmación
                                 </div>
                             </div>
 
                             {/* Body */}
                             <div className="p-8 text-center">
-                                <p className="text-white text-lg font-light leading-relaxed">
+                                <p className="text-txt-primary text-lg font-light leading-relaxed">
                                     {confirmState.message}
                                 </p>
                                 <p className="text-txt-dim text-xs mt-4 uppercase tracking-widest font-bold">
-                                    This action cannot be undone
+                                    Esta acción no se puede deshacer
                                 </p>
                             </div>
 
@@ -130,7 +130,7 @@ export const DialogProvider = ({ children }) => {
                                     variant="ghost"
                                     className="flex-1"
                                 >
-                                    CANCEL
+                                    CANCELAR
                                 </Button>
                                 <Button
                                     onClick={() => handleConfirm(true)}
@@ -138,7 +138,7 @@ export const DialogProvider = ({ children }) => {
                                     className="flex-1"
                                     icon={<span className="material-icons">check</span>}
                                 >
-                                    CONFIRM
+                                    CONFIRMAR
                                 </Button>
                             </div>
                         </GlassContainer>

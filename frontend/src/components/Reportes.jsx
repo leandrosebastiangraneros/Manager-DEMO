@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { API_URL } from '../config';
 import { useDialog } from '../context/DialogContext';
+import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
 import {
@@ -128,11 +129,12 @@ const Reportes = () => {
     };
 
     const changeMonth = (delta) => {
-        const newDate = new Date(date.setMonth(date.getMonth() + delta));
-        setDate(new Date(newDate));
+        const newDate = new Date(date);
+        newDate.setMonth(newDate.getMonth() + delta);
+        setDate(newDate);
     };
 
-    const formatMoney = (val) => val?.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) || '$0,00';
+    // formatMoney imported from utils/formatters.js (null-safe)
 
     return (
         <div className="space-y-8 animate-[fadeIn_0.5s_ease-out] pb-10">

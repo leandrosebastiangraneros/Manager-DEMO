@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
 import { useDialog } from '../context/DialogContext';
+import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
 import { toast } from 'sonner';
@@ -13,6 +14,20 @@ const Ventas = () => {
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [openPackDropdown, setOpenPackDropdown] = useState(null);
+    const dropdownRef = useRef(null);
+
+    // Close pack dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpenPackDropdown(null);
+            }
+        };
+        if (openPackDropdown !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [openPackDropdown]);
 
     // Cart Management: { productId: quantity }
     const [cart, setCart] = useState({});
@@ -169,10 +184,7 @@ const Ventas = () => {
         }
     };
 
-    const formatMoney = (val) => {
-        if (val === undefined || val === null) return '$ 0,00';
-        return val.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-    };
+    // formatMoney imported from utils/formatters.js (null-safe)
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -344,7 +356,7 @@ const Ventas = () => {
 
                                                     {/* Botón Pack */}
                                                     {(product.is_pack || (product.formats && product.formats.length > 0)) && (
-                                                        <div className="relative">
+                                                        <div className="relative" ref={dropdownRef}>
                                                             <button
                                                                 onClick={() => {
                                                                     if (product.formats?.length > 0 || (product.is_pack && product.pack_size > 1)) {

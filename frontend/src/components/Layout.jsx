@@ -77,16 +77,20 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                     { id: 'inicio', label: 'Inicio', icon: 'dashboard' },
                     { id: 'caja', label: 'Caja', icon: 'shopping_cart' },
                     { id: 'inventario', label: 'Stock', icon: 'inventory_2' },
+                    { id: 'gastos', label: 'Reportes', icon: 'analytics' },
                     { id: 'movimientos', label: 'Log', icon: 'history_toggle_off' },
-                    { id: 'gastos', label: 'Gastos', icon: 'analytics' },
+                    { id: 'ajustes', label: 'Config', icon: 'settings' },
                 ].map((item) => (
                     <button
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
-                        className={`flex flex-col items-center justify-center w-full h-full transition-colors ${activeTab === item.id ? 'text-txt-primary' : 'text-txt-dim hover:text-txt-primary'}`}
+                        className={`flex flex-col items-center justify-center w-full h-full transition-colors relative ${activeTab === item.id ? 'text-accent' : 'text-txt-dim hover:text-txt-primary'}`}
                     >
-                        <span className="material-icons text-2xl">{item.icon}</span>
-                        <span className="text-[10px] font-bold mt-1 uppercase">{item.label}</span>
+                        {activeTab === item.id && (
+                            <span className="absolute top-0 w-8 h-0.5 bg-accent rounded-full" />
+                        )}
+                        <span className="material-icons text-xl">{item.icon}</span>
+                        <span className="text-[8px] font-black mt-0.5 uppercase tracking-wider">{item.label}</span>
                     </button>
                 ))}
             </div>
