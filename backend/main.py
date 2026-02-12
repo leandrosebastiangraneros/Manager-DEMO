@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 # Configurar root_path para Vercel
 root_path = "/api" if os.getenv("VERCEL") else ""
 
-app = FastAPI(title="NovaManager Commercial - API", root_path=root_path, debug=True)
+app = FastAPI(title="NovaManager Commercial - API", root_path=root_path, debug=os.getenv("DEBUG", "false").lower() == "true")
 
 # CORS
+ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False if "*" in ALLOWED_ORIGINS else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -55,8 +56,9 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 # Helper for Activity Logging
-def log_movement(category: str, action: str, description: str, metadata: dict = {}, 
+def log_movement(category: str, action: str, description: str, metadata: Optional[Dict] = None, 
                  product_id: int = None, tx_id: int = None, sale_id: int = None):
+    metadata = metadata or {}
     try:
         data = {
             "category": category,
@@ -159,7 +161,8 @@ def create_stock_item(item: schemas.StockItemCreate):
     try:
         cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
         if cat_res.data: cat_id = cat_res.data["id"]
-    except: pass
+    except Exception as e:
+        logger.warning(f"Could not fetch expense category: {e}")
 
     tx_data = {
         "date": datetime.now().isoformat(),
@@ -194,7 +197,8 @@ def create_batch_stock(batch: schemas.BatchStockRequest):
     try:
         cat_res = supabase.table("categories").select("id").eq("name", "Compra de Mercadería").single().execute()
         if cat_res.data: cat_id = cat_res.data["id"]
-    except: pass
+    except Exception as e:
+        logger.warning(f"Could not fetch expense category: {e}")
 
     processed = []
     for item in batch.items:
@@ -324,8 +328,13 @@ def update_stock_item(item_id: int, item: schemas.StockItemCreate):
 
 @app.delete("/stock/{item_id}")
 def delete_stock_item(item_id: int):
+    # Validate existence before delete
+    check = supabase.table("stock_items").select("id").eq("id", item_id).execute()
+    if not check.data:
+        raise HTTPException(status_code=404, detail=f"Producto {item_id} no encontrado")
     supabase.table("stock_items").delete().eq("id", item_id).execute()
-    return {"status": "deleted"}
+    log_movement("STOCK", "BAJA", f"Producto eliminado (ID: {item_id})", product_id=item_id)
+    return {"status": "deleted", "id": item_id}
 
 # --- STOCK FORMATS ---
 @app.post("/stock/formats", response_model=schemas.StockItemFormat)
@@ -347,7 +356,8 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
     try:
         cat_res = supabase.table("categories").select("id").eq("name", "Venta de Bebidas").single().execute()
         if cat_res.data: cat_id = cat_res.data["id"]
-    except: pass
+    except Exception as e:
+        logger.warning(f"Could not fetch sales category: {e}")
     
     total_sale_amount = 0.0
     processed_items = []
@@ -355,7 +365,8 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
     for s_item in batch.items:
         res = supabase.table("stock_items").select("*").eq("id", s_item.item_id).single().execute()
         product = res.data
-        if not product: raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
         
         if s_item.is_pack:
             # Multi-format Logic: Try to find the specific format
@@ -410,6 +421,9 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
         supabase.table("sales").insert(sale_data).execute()
         
         new_qty = p["product"]["quantity"] - p.get("deduct_qty", p["quantity"])
+        if new_qty < 0:
+            logger.warning(f"Stock negativo detectado para producto {p['product']['id']}: {new_qty}")
+            new_qty = 0
         supabase.table("stock_items").update({
             "quantity": new_qty,
             "status": "DEPLETED" if new_qty <= 0 else "AVAILABLE"
@@ -441,7 +455,9 @@ def get_finance_summary(month: int, year: int):
 
 @app.get("/expenses", response_model=List[schemas.ExpenseDocument])
 def read_expenses(month: int, year: int):
-    res = supabase.table("expense_documents").select("*").execute()
+    start_date = date(year, month, 1).isoformat()
+    end_date = date(year + 1, 1, 1).isoformat() if month == 12 else date(year, month + 1, 1).isoformat()
+    res = supabase.table("expense_documents").select("*").gte("date", start_date).lt("date", end_date).execute()
     return res.data or []
 
 @app.post("/expenses/upload")
