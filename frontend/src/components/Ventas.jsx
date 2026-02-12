@@ -145,7 +145,7 @@ const Ventas = () => {
                 </header>
 
                 {/* Table View (Desktop) */}
-                <div className="flex-1 overflow-hidden bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col relative mb-4">
+                <div className="flex-1 bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col relative mb-4">
                     <div className="overflow-auto custom-scrollbar flex-1">
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
@@ -248,7 +248,7 @@ const Ventas = () => {
 
                                                             {/* Dropdown de Selección de Formatos */}
                                                             {openPackDropdown === product.id && (
-                                                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-50 p-2 animate-[fadeIn_0.2s_ease-out]">
+                                                                <div className="absolute top-full right-0 mt-2 w-48 bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-[999] p-2 animate-[fadeIn_0.2s_ease-out]">
                                                                     <div className="text-[8px] font-black uppercase text-txt-dim p-2 border-b border-panel-border/5 mb-2">Seleccionar Pack</div>
 
                                                                     {/* Default Pack */}
