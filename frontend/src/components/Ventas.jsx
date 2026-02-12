@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
 import { useDialog } from '../context/DialogContext';
 import { formatMoney } from '../utils/formatters';
+import { useCart } from '../hooks/useCart';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
 import { toast } from 'sonner';
@@ -11,7 +12,6 @@ const Ventas = () => {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [openPackDropdown, setOpenPackDropdown] = useState(null);
     const dropdownRef = useRef(null);
@@ -28,10 +28,6 @@ const Ventas = () => {
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
     }, [openPackDropdown]);
-
-    // Cart Management: { productId: quantity }
-    const [cart, setCart] = useState({});
-    const [description, setDescription] = useState('Venta Directa Salón');
 
     useEffect(() => {
         fetchData();
@@ -60,129 +56,8 @@ const Ventas = () => {
         }
     };
 
-    const updateCart = (productId, newQty, type = 'unit', formatId = null) => {
-        const cartKey = type === 'pack' ? `${productId}_pack_${formatId || 'default'}` : `${productId}_unit`;
-        const product = products.find(p => p.id === productId);
-        if (!product) return;
-
-        newQty = parseFloat(newQty);
-        if (isNaN(newQty)) newQty = 0;
-
-        let pSize = 1;
-        if (type === 'pack') {
-            if (formatId) {
-                const fmt = product.formats?.find(f => f.id === formatId);
-                pSize = fmt ? fmt.pack_size : 1;
-            } else {
-                pSize = product.pack_size || 1;
-            }
-        }
-
-        const unitsNeeded = newQty * pSize;
-
-        // Check stock against TOTAL units of this product in cart
-        const totalOtherUnits = Object.entries(cart).reduce((acc, [key, q]) => {
-            if (key.startsWith(`${productId}_`) && key !== cartKey) {
-                const parts = key.split('_');
-                const t = parts[1];
-                const fId = parts[2];
-                let size = 1;
-                if (t === 'pack') {
-                    if (fId && fId !== 'default') {
-                        const fmt = product.formats?.find(f => f.id === parseInt(fId));
-                        size = fmt ? fmt.pack_size : 1;
-                    } else {
-                        size = product.pack_size || 1;
-                    }
-                }
-                return acc + (q * size);
-            }
-            return acc;
-        }, 0);
-
-        if (unitsNeeded + totalOtherUnits > product.quantity) {
-            toast.error(`Stock insuficiente para ${product.brand || ''} ${product.name}`);
-            return;
-        }
-
-        if (newQty <= 0) {
-            const newCart = { ...cart };
-            delete newCart[cartKey];
-            setCart(newCart);
-        } else {
-            setCart(prev => ({ ...prev, [cartKey]: newQty }));
-        }
-    };
-
-    const calculateTotal = () => {
-        return Object.entries(cart).reduce((sum, [key, qty]) => {
-            const parts = key.split('_');
-            const id = parseInt(parts[0]);
-            const type = parts[1];
-            const fId = parts[2];
-            const product = products.find(p => p.id === id);
-            if (!product) return sum;
-
-            let price = product.selling_price || 0;
-            if (type === 'pack') {
-                if (fId && fId !== 'default') {
-                    const fmt = product.formats?.find(f => f.id === parseInt(fId));
-                    price = fmt ? fmt.pack_price : 0;
-                } else {
-                    price = product.pack_price || (product.selling_price * (product.pack_size || 1));
-                }
-            }
-
-            return sum + price * qty;
-        }, 0);
-    };
-
-    const handleConfirmSale = async () => {
-        if (Object.keys(cart).length === 0) return toast.warning("El carrito está vacío.");
-        setSubmitting(true);
-        try {
-            const payload = {
-                items: Object.entries(cart)
-                    .filter(([_, qty]) => qty > 0)
-                    .map(([key, qty]) => {
-                        const parts = key.split('_');
-                        const id = parseInt(parts[0]);
-                        const type = parts[1];
-                        const fId = parts[2];
-                        const item = {
-                            item_id: id,
-                            quantity: qty,
-                            is_pack: type === 'pack'
-                        };
-                        if (fId && fId !== 'default') {
-                            item.format_id = parseInt(fId);
-                        }
-                        return item;
-                    }),
-                description: description
-            };
-
-            const res = await fetch(`${API_URL}/sales`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                toast.success("Venta procesada con éxito.");
-                setCart({});
-                setSearchTerm('');
-                fetchData();
-            } else {
-                const err = await res.json();
-                toast.error(err.detail || "Error al procesar venta.");
-            }
-        } catch (err) {
-            toast.error("Error de conexión.");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    // Cart logic delegated to useCart hook
+    const { cart, setCart, description, setDescription, submitting, updateCart, cartTotal, cartItemCount, handleConfirmSale } = useCart(products, fetchData);
 
     // formatMoney imported from utils/formatters.js (null-safe)
 
@@ -191,7 +66,7 @@ const Ventas = () => {
         (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const cartTotal = calculateTotal();
+    // cartTotal is now provided by useCart hook
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[50vh] text-txt-dim animate-pulse">
