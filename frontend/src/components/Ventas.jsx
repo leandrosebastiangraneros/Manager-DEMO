@@ -504,7 +504,7 @@ const Ventas = () => {
                         <div className="flex justify-between items-end">
                             <span className="text-[9px] font-black text-txt-dim uppercase tracking-widest mb-1.5">Total a Pagar</span>
                             <span className="text-3xl font-mono font-black text-txt-primary tracking-tighter">
-                                {formatMoney(calculateTotal())}
+                                {formatMoney(cartTotal)}
                             </span>
                         </div>
 
