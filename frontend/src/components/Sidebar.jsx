@@ -28,7 +28,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                         flex flex-col items-center justify-center transition-all duration-500
                         ${isCollapsed ? 'w-10 h-10' : 'w-full px-4 py-3'}
                     `}>
-                        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mb-2" />
+                        <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain mb-2" />
                         {!isCollapsed && (
                             <div className="font-display font-bold tracking-tighter text-sm uppercase text-center leading-tight">
                                 CENTRO DE<br />
