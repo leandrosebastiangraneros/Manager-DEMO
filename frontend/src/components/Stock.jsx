@@ -13,6 +13,7 @@ const Stock = () => {
 
     // Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Form State for Add/Edit & Replenishment
