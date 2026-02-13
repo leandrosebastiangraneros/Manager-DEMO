@@ -20,5 +20,8 @@ frontend/.DS_Store
 .vscode/
 .idea/
 
+# AI Context (local only, not for repo)
+AI_CONTEXT.md
+
 # Logs
 *.log
