@@ -10,6 +10,7 @@ import SellModal from './stock/SellModal';
 
 const Stock = () => {
     const stock = useStock();
+    const [formOpen, setFormOpen] = useState(false);
 
     if (stock.loading) return (
         <div className="flex flex-col items-center justify-center h-[50vh] text-txt-dim animate-pulse">
@@ -17,8 +18,6 @@ const Stock = () => {
             <div className="font-mono text-xs uppercase tracking-widest font-bold text-txt-primary">Sincronizando Inventario...</div>
         </div>
     );
-
-    const [formOpen, setFormOpen] = useState(false);
 
     return (
         <div className="flex flex-col pb-24 lg:pb-0 lg:h-full lg:overflow-hidden">
