@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { API_URL } from '../../config';
+import ConfirmModal from '../common/ConfirmModal';
 
 const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => {
     const [scope, setScope] = useState('all'); // all, category, brand
     const [selectedCategory, setSelectedCategory] = useState('');
     const [brandFilter, setBrandFilter] = useState('');
+    const [brands, setBrands] = useState([]);
     const [percentage, setPercentage] = useState('');
     const [targetField, setTargetField] = useState('price'); // cost, price, both
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    // Fetch brands when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetch(`${API_URL}/stock/brands`)
+                .then(res => res.json())
+                .then(data => setBrands(data))
+                .catch(err => console.error("Error fetching brands:", err));
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
-    const handleSubmit = async (e) => {
+    const handlePreSubmit = (e) => {
         e.preventDefault();
 
         if (!percentage || isNaN(percentage)) {
@@ -25,14 +38,15 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
             return;
         }
         if (scope === 'brand' && !brandFilter.trim()) {
-            toast.error("Ingresa una marca");
+            toast.error("Selecciona una marca");
             return;
         }
 
-        if (!window.confirm(`⚠️ ¿Estás seguro de actualizar precios?\n\nEsta acción modificará ${scope === 'all' ? 'TODO el inventario' : 'los productos seleccionados'} un ${percentage}%.\n\nNO se puede deshacer automáticamente.`)) {
-            return;
-        }
+        setShowConfirm(true);
+    };
 
+    const handleConfirm = async () => {
+        setShowConfirm(false);
         setIsSubmitting(true);
         try {
             const payload = {
@@ -84,7 +98,8 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
                 </div>
 
                 {/* Body */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+                {/* Body */}
+                <form onSubmit={handlePreSubmit} className="p-6 space-y-6 overflow-y-auto">
 
                     {/* Scope Selector */}
                     <div className="space-y-3">
@@ -103,17 +118,24 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
                     </div>
 
                     {/* Filter Input */}
+                    {/* Filter Input */}
                     {scope === 'brand' && (
                         <div className="animate-fadeIn">
                             <label className="text-xs font-black text-txt-dim uppercase tracking-widest block mb-2">Marca del Producto</label>
                             <input
+                                list="brands-list"
                                 type="text"
-                                placeholder="Ej: Coca Cola"
+                                placeholder="Escribe o selecciona..."
                                 className="w-full p-3 bg-surface-highlight border-2 border-panel-border/10 rounded-xl text-sm font-bold text-txt-primary outline-none focus:border-accent transition-colors"
                                 value={brandFilter}
                                 onChange={e => setBrandFilter(e.target.value)}
                                 autoFocus
                             />
+                            <datalist id="brands-list">
+                                {brands.map((b, i) => (
+                                    <option key={i} value={b} />
+                                ))}
+                            </datalist>
                         </div>
                     )}
 
@@ -212,11 +234,19 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
                         ) : (
                             <span className="material-icons text-lg">save_as</span>
                         )}
-                        {isSubmitting ? 'Procesando...' : 'Confirmar Actualización'}
+                        {isSubmitting ? 'Procesando...' : 'Actualizar Precios'}
                     </button>
 
                 </form>
             </div>
+
+            <ConfirmModal
+                isOpen={showConfirm}
+                title="¿Confirmar Actualización?"
+                message={`Estás a punto de modificar precios de ${scope === 'all' ? 'TODO EL INVENTARIO' : 'los productos seleccionados'} un ${percentage}%. Esta acción NO se puede deshacer.`}
+                onConfirm={handleConfirm}
+                onCancel={() => setShowConfirm(false)}
+            />
         </div>
     );
 };

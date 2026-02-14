@@ -284,6 +284,16 @@ def delete_stock_format(format_id: int):
     supabase.table("stock_item_formats").delete().eq("id", format_id).execute()
     return {"status": "deleted"}
 
+@router.get("/stock/brands")
+def get_brands():
+    """Fetch distinct brands for filtering."""
+    res = supabase.table("stock_items").select("brand").execute()
+    if not res.data:
+        return []
+    # Extract unique brands, ignore None/Empty
+    brands = sorted(list(set(item["brand"] for item in res.data if item.get("brand"))))
+    return brands
+
 @router.post("/stock/bulk-update")
 def bulk_update_prices(request: schemas.BulkUpdateRequest):
     """
@@ -296,7 +306,7 @@ def bulk_update_prices(request: schemas.BulkUpdateRequest):
         
         if request.category_id:
             query = query.eq("category_id", request.category_id)
-        if request.brand:
+        if request.brand and request.brand.strip():
             query = query.ilike("brand", f"%{request.brand}%")
             
         items = query.execute().data
