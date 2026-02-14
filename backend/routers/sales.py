@@ -2,8 +2,10 @@
 from typing import List
 from datetime import datetime
 import logging
+import os
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from supabase_client import supabase
 from helpers import log_movement
@@ -198,4 +200,154 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
         tx_id=main_tx_id,
     )
 
-    return {"status": "success", "total": total_sale_amount}
+    return {"status": "success", "total": total_sale_amount, "transaction_id": main_tx_id}
+
+
+# --- SALES INVOICE PDF ---
+@router.get("/sales/invoice/{tx_id}")
+def generate_sale_invoice(tx_id: int):
+    """Generate a PDF invoice for a completed sale."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Table,
+        TableStyle,
+        Paragraph,
+        Spacer,
+    )
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+    # Fetch the transaction
+    tx_res = (
+        supabase.table("transactions")
+        .select("*")
+        .eq("id", tx_id)
+        .single()
+        .execute()
+    )
+    tx = tx_res.data
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+
+    # Fetch sale items linked to this transaction
+    sales_res = (
+        supabase.table("sales")
+        .select("*")
+        .eq("sale_tx_id", tx_id)
+        .execute()
+    )
+    sale_items = sales_res.data or []
+
+    # Fetch product names for each sale item
+    enriched_items = []
+    for item in sale_items:
+        prod_res = (
+            supabase.table("stock_items")
+            .select("name, brand")
+            .eq("id", item["stock_item_id"])
+            .single()
+            .execute()
+        )
+        prod = prod_res.data or {}
+        product_name = f"{prod.get('brand', '')} {prod.get('name', 'Producto')}".strip()
+        desc = item.get("description", "")
+        item_type = "PACK" if "PACK" in desc.upper() else "UNID"
+        unit_price = (
+            item["sale_price_total"] / item["quantity"]
+            if item["quantity"] > 0
+            else 0
+        )
+        enriched_items.append(
+            {
+                "name": product_name,
+                "quantity": item["quantity"],
+                "type": item_type,
+                "unit_price": unit_price,
+                "subtotal": item["sale_price_total"],
+            }
+        )
+
+    # Build PDF
+    filename = f"Factura_{tx_id}.pdf"
+    filepath = os.path.join("/tmp", filename)
+    doc = SimpleDocTemplate(filepath, pagesize=A4,
+                            topMargin=30 * mm, bottomMargin=20 * mm,
+                            leftMargin=20 * mm, rightMargin=20 * mm)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    style_center = ParagraphStyle("Center", parent=styles["Normal"], alignment=TA_CENTER)
+    style_right = ParagraphStyle("Right", parent=styles["Normal"], alignment=TA_RIGHT)
+
+    # Header
+    elements.append(Paragraph("<b>NovaManager</b>", styles["Title"]))
+    elements.append(Paragraph("Factura de Venta", style_center))
+    elements.append(Spacer(1, 15))
+
+    # Transaction info
+    tx_date = tx.get("date", "")[:19].replace("T", " ")
+    elements.append(Paragraph(f"<b>N° Transacción:</b> {tx_id}", styles["Normal"]))
+    elements.append(Paragraph(f"<b>Fecha:</b> {tx_date}", styles["Normal"]))
+    elements.append(Paragraph(f"<b>Descripción:</b> {tx.get('description', '')}", styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # Items table
+    table_data = [["Producto", "Cant.", "Tipo", "P. Unit.", "Subtotal"]]
+    for ei in enriched_items:
+        table_data.append(
+            [
+                ei["name"][:35],
+                str(int(ei["quantity"]) if ei["quantity"] == int(ei["quantity"]) else ei["quantity"]),
+                ei["type"],
+                f"${ei['unit_price']:,.2f}",
+                f"${ei['subtotal']:,.2f}",
+            ]
+        )
+
+    t = Table(table_data, colWidths=[180, 50, 50, 80, 80])
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    elements.append(t)
+    elements.append(Spacer(1, 20))
+
+    # Total
+    total = tx.get("amount", 0)
+    elements.append(
+        Paragraph(
+            f"<b>TOTAL: ${total:,.2f}</b>",
+            ParagraphStyle("TotalStyle", parent=styles["Heading2"], alignment=TA_RIGHT),
+        )
+    )
+    elements.append(Spacer(1, 40))
+
+    # Footer
+    elements.append(
+        Paragraph(
+            "Documento no fiscal — Generado por NovaManager",
+            ParagraphStyle("Footer", parent=styles["Normal"], alignment=TA_CENTER,
+                           fontSize=7, textColor=colors.grey),
+        )
+    )
+
+    doc.build(elements)
+
+    return FileResponse(filepath, filename=filename, media_type="application/pdf")

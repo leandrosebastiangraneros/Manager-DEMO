@@ -124,7 +124,27 @@ export function useCart(products, fetchData) {
             });
 
             if (res.ok) {
-                toast.success("Venta procesada con éxito.");
+                const data = await res.json();
+                // Auto-download invoice PDF
+                if (data.transaction_id) {
+                    try {
+                        const pdfRes = await fetch(`${API_URL}/sales/invoice/${data.transaction_id}`);
+                        if (pdfRes.ok) {
+                            const blob = await pdfRes.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `Factura_${data.transaction_id}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            window.URL.revokeObjectURL(url);
+                        }
+                    } catch (e) {
+                        console.error('Error descargando factura:', e);
+                    }
+                }
+                toast.success("Venta procesada con éxito. Factura descargada.");
                 setCart({});
                 fetchData();
             } else {
