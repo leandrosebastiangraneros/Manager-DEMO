@@ -110,22 +110,23 @@ const Ventas = () => {
                         </div>
                     </div>
 
-                    {/* Repositioned Search Bar */}
-                    <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface w-full border border-panel-border/10">
-                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-accent transition-colors text-lg">search</span>
+                    {/* Search Bar — Prominent */}
+                    <div className="relative group shadow-md hover:shadow-lg transition-shadow duration-300 rounded-2xl bg-surface w-full border-2 border-accent/20 focus-within:border-accent/50">
+                        <span className="material-icons absolute left-5 top-1/2 -translate-y-1/2 text-accent/50 group-focus-within:text-accent transition-colors text-2xl">search</span>
                         <input
                             type="text"
                             placeholder="Buscar producto o marca..."
-                            className="w-full bg-transparent border-none pl-11 pr-4 py-3 text-txt-primary font-bold text-sm rounded-xl outline-none placeholder:text-txt-dim"
+                            autoFocus
+                            className="w-full bg-transparent border-none pl-14 pr-12 py-4 text-txt-primary font-bold text-base rounded-2xl outline-none placeholder:text-txt-dim/60"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                         {searchTerm && (
                             <button
                                 onClick={() => setSearchTerm('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface-highlight p-1 rounded-full text-txt-dim hover:bg-gray-200 transition-colors"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface-highlight p-1.5 rounded-full text-txt-dim hover:bg-red-100 hover:text-red-500 transition-colors"
                             >
-                                <span className="material-icons text-xs">close</span>
+                                <span className="material-icons text-sm">close</span>
                             </button>
                         )}
                     </div>
@@ -138,10 +139,8 @@ const Ventas = () => {
                             <thead>
                                 <tr className="bg-gray-50/50 text-txt-primary text-xs uppercase font-black tracking-widest border-b border-panel-border/10 sticky top-0 bg-surface z-10 backdrop-blur-md">
                                     <th className="p-4 pl-6">Producto</th>
-                                    <th className="p-4 hidden md:table-cell text-center">Categoría</th>
                                     <th className="p-4 text-center">Stock</th>
-                                    <th className="p-4 hidden lg:table-cell text-right">Precio</th>
-                                    <th className="p-4 hidden md:table-cell text-center">Estado</th>
+                                    <th className="p-4 text-right">Precio</th>
                                     <th className="p-4 text-right pr-6">Acción</th>
                                 </tr>
                             </thead>
@@ -175,34 +174,25 @@ const Ventas = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="p-4 hidden md:table-cell text-center">
-                                                <span className="px-2 py-1 bg-surface-highlight text-txt-dim rounded-lg text-xs font-black uppercase tracking-widest border border-panel-border/10">
-                                                    {categories.find(c => c.id === product.category_id)?.name || 'Otros'}
-                                                </span>
-                                            </td>
                                             <td className="p-4 text-center">
                                                 <div className="flex flex-col">
                                                     <span className={`text-[13px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
                                                         {product.quantity}
                                                     </span>
-                                                    <span className={`text-xs font-black uppercase tracking-tighter ${isLowStock ? 'text-orange-500' : 'text-txt-dim'}`}>
-                                                        {isLowStock ? 'Stock Bajo' : 'Disponible'}
-                                                    </span>
+                                                    {isLowStock && (
+                                                        <span className="text-xs font-black uppercase tracking-tighter text-orange-500">
+                                                            Stock Bajo
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="p-4 hidden lg:table-cell text-right">
+                                            <td className="p-4 text-right">
                                                 <div className="flex flex-col items-end">
                                                     <span className="text-[13px] font-mono font-black text-txt-primary">{formatMoney(product.selling_price)}</span>
                                                     {product.is_pack && product.pack_price > 0 && <span className="text-xs text-accent font-black uppercase tracking-tighter">Pack x{product.pack_size}: {formatMoney(product.pack_price)}</span>}
                                                     {product.formats?.map(fmt => (
                                                         <span key={fmt.id} className="text-[11px] text-txt-dim font-black uppercase tracking-tighter block">Pack x{fmt.pack_size}: {formatMoney(fmt.pack_price)}</span>
                                                     ))}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 hidden md:table-cell text-center">
-                                                <div className={`px-2 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-sm flex items-center justify-center w-fit mx-auto gap-1.5 ${isLowStock ? 'bg-orange-500/10 text-orange-600' : 'bg-green-500/10 text-green-600'}`}>
-                                                    <div className={`w-1 h-1 rounded-full ${isLowStock ? 'bg-orange-600 animate-pulse' : 'bg-green-600'}`}></div>
-                                                    {isLowStock ? 'Crítico' : 'Disponible'}
                                                 </div>
                                             </td>
                                             <td className="p-4 text-right pr-6">
