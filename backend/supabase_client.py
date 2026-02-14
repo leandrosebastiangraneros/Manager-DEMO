@@ -68,6 +68,7 @@ class SupabaseTable:
             def range(self, start, end): self.extra_headers["Range"] = f"{start}-{end}"; return self
             def limit(self, l): self.params['limit'] = l; return self
             def single(self): self.is_single = True; return self
+            def ilike(self, col, val): self.params[col] = f"ilike.{val}"; return self
 
             def execute(self):
                 http = self.table.client._client
