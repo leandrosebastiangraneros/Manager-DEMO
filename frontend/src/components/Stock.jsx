@@ -2,7 +2,7 @@
  * Stock — Inventory management page.
  * Refactored: business logic lives in useStock hook, modals in sub-components.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { formatMoney } from '../utils/formatters';
 import { useStock } from '../hooks/useStock';
 import EditStockModal from './stock/EditStockModal';
@@ -18,8 +18,10 @@ const Stock = () => {
         </div>
     );
 
+    const [formOpen, setFormOpen] = useState(false);
+
     return (
-        <div className="h-full flex flex-col pb-20 overflow-hidden">
+        <div className="flex flex-col pb-24 lg:pb-0 lg:h-full lg:overflow-hidden">
             {/* --- HEADER: Title + Search + Stats --- */}
             <header className="mb-6 flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -42,19 +44,27 @@ const Stock = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                    <StatCard icon="dataset" color="blue" label="Total Productos" value={stock.totalProdCount} />
-                    <StatCard icon="priority_high" color="orange" label="Stock Crítico" value={stock.lowStockCount} valueColor="text-orange-600" />
-                    <StatCard icon="payments" color="green" label="Valor Activo" value={formatMoney(stock.inventoryValue)} />
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-2">
+                    <StatCard icon="dataset" color="blue" label="Productos" value={stock.totalProdCount} />
+                    <StatCard icon="priority_high" color="orange" label="Bajo" value={stock.lowStockCount} valueColor="text-orange-600" />
+                    <StatCard icon="payments" color="green" label="Valor" value={formatMoney(stock.inventoryValue)} />
                 </div>
             </header>
 
             {/* --- BODY: Replenishment Form + Inventory Grid --- */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="flex-1 lg:overflow-hidden flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6">
 
-                {/* LEFT: Replenishment Form */}
-                <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
-                    <div className="p-5 border border-panel-border/5 flex flex-col h-full bg-surface rounded-3xl shadow-2xl relative">
+                {/* LEFT: Replenishment Form — collapsible on mobile */}
+                <div className="lg:col-span-4 flex flex-col gap-4 lg:overflow-hidden">
+                    {/* Mobile toggle button */}
+                    <button
+                        onClick={() => setFormOpen(!formOpen)}
+                        className="lg:hidden w-full py-3 bg-accent text-void rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+                    >
+                        <span className="material-icons text-base">{formOpen ? 'expand_less' : 'add_circle'}</span>
+                        {formOpen ? 'Cerrar Formulario' : 'Ingresar Mercadería'}
+                    </button>
+                    <div className={`${formOpen ? 'block' : 'hidden'} lg:block p-5 border border-panel-border/5 flex flex-col lg:h-full bg-surface rounded-3xl shadow-2xl relative`}>
                         <div className="flex items-center gap-2 mb-4">
                             <div className="w-2 h-6 bg-accent rounded-full"></div>
                             <h2 className="text-xs font-black uppercase tracking-widest text-txt-primary">Ingreso de Mercadería</h2>
@@ -224,7 +234,7 @@ const Stock = () => {
                 </div>
 
                 {/* RIGHT: Inventory Table */}
-                <div className="lg:col-span-8 overflow-hidden flex flex-col bg-surface rounded-3xl border border-panel-border/5 shadow-2xl relative">
+                <div className="lg:col-span-8 lg:overflow-hidden flex flex-col bg-surface rounded-3xl border border-panel-border/5 shadow-2xl relative">
                     <div className="overflow-auto custom-scrollbar flex-1 relative">
                         {/* Desktop Table */}
                         <table className="w-full text-left border-collapse hidden md:table">
@@ -286,13 +296,13 @@ const Stock = () => {
 // ---------- Sub-components ----------
 
 const StatCard = ({ icon, color, label, value, valueColor = 'text-txt-primary' }) => (
-    <div className={`bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-${color}-500/30 transition-all`}>
-        <div className={`w-10 h-10 rounded-xl bg-${color}-500/10 text-${color}-600 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-            <span className="material-icons text-xl">{icon}</span>
+    <div className={`bg-surface p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-2 md:gap-4 group hover:border-${color}-500/30 transition-all`}>
+        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-${color}-500/10 text-${color}-600 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+            <span className="material-icons text-lg md:text-xl">{icon}</span>
         </div>
         <div>
-            <div className="text-[9px] font-black text-txt-secondary uppercase tracking-widest">{label}</div>
-            <div className={`text-lg font-mono font-black ${valueColor}`}>{value}</div>
+            <div className="text-[9px] md:text-[9px] font-black text-txt-secondary uppercase tracking-wider md:tracking-widest">{label}</div>
+            <div className={`text-sm md:text-lg font-mono font-black ${valueColor}`}>{value}</div>
         </div>
     </div>
 );
