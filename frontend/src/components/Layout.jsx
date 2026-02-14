@@ -64,8 +64,8 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                 <div className="hidden md:flex absolute top-4 right-4 z-50">
                     <ThemeToggle />
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="p-4 md:p-12 pt-24 md:pt-12 w-full min-h-full pb-32">
+                <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
+                    <div className="flex-1 p-4 md:p-6 pt-24 md:pt-6 w-full h-full min-h-0 overflow-y-auto custom-scrollbar">
                         {children}
                     </div>
                 </div>
