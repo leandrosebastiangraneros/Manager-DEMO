@@ -151,7 +151,7 @@ const Ventas = () => {
     );
 
     return (
-        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6 p-4 lg:p-0 lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6 px-3 pb-24 lg:px-0 lg:pb-0 lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
 
             {/* Left: Product Selection Area */}
             <div className="lg:col-span-3 flex flex-col min-h-0 lg:overflow-hidden">
@@ -166,34 +166,34 @@ const Ventas = () => {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
-                        <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-accent/20 transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <span className="material-icons text-xl">inventory_2</span>
+                    <div className="grid grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-6">
+                        <div className="bg-surface p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-2 md:gap-4 group hover:border-accent/20 transition-all">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <span className="material-icons text-lg md:text-xl">inventory_2</span>
                             </div>
                             <div>
-                                <div className="text-xs font-black text-txt-dim uppercase tracking-widest">Productos</div>
-                                <div className="text-lg font-mono font-black text-txt-primary">{products.length}</div>
+                                <div className="text-[10px] md:text-xs font-black text-txt-dim uppercase tracking-wider md:tracking-widest">Prods</div>
+                                <div className="text-sm md:text-lg font-mono font-black text-txt-primary">{products.length}</div>
                             </div>
                         </div>
-                        <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <span className="material-icons text-xl">warning_amber</span>
+                        <div className="bg-surface p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-2 md:gap-4 group hover:border-orange-200 transition-all">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <span className="material-icons text-lg md:text-xl">warning_amber</span>
                             </div>
                             <div>
-                                <div className="text-xs font-black text-txt-dim uppercase tracking-widest">Stock Bajo</div>
-                                <div className="text-lg font-mono font-black text-orange-600">
+                                <div className="text-[10px] md:text-xs font-black text-txt-dim uppercase tracking-wider md:tracking-widest">Bajo</div>
+                                <div className="text-sm md:text-lg font-mono font-black text-orange-600">
                                     {products.filter(p => p.quantity <= (p.min_stock_alert || 0)).length}
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-surface p-4 rounded-2xl border border-accent/10 shadow-md flex items-center gap-4 group hover:bg-accent transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-accent text-void flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <span className="material-icons text-xl">shopping_cart</span>
+                        <div className="bg-surface p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-accent/10 shadow-md flex items-center gap-2 md:gap-4 group hover:bg-accent transition-all">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-accent text-void flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <span className="material-icons text-lg md:text-xl">shopping_cart</span>
                             </div>
                             <div>
-                                <div className="text-xs font-black text-txt-dim group-hover:text-void uppercase tracking-widest transition-colors">Total Pedido</div>
-                                <div className="text-lg font-mono font-black text-txt-primary group-hover:text-void transition-colors">{formatMoney(cartTotal)}</div>
+                                <div className="text-[10px] md:text-xs font-black text-txt-dim group-hover:text-void uppercase tracking-wider md:tracking-widest transition-colors">Total</div>
+                                <div className="text-sm md:text-lg font-mono font-black text-txt-primary group-hover:text-void transition-colors">{formatMoney(cartTotal)}</div>
                             </div>
                         </div>
                     </div>
@@ -205,7 +205,7 @@ const Ventas = () => {
                             <input
                                 ref={searchInputRef}
                                 type="text"
-                                placeholder="Buscar producto, marca o escanear código..."
+                                placeholder="Buscar producto..."
                                 autoFocus
                                 className="w-full bg-transparent border-none pl-14 pr-12 py-4 text-txt-primary font-bold text-base rounded-2xl outline-none placeholder:text-txt-dim/60"
                                 value={searchTerm}
@@ -245,8 +245,8 @@ const Ventas = () => {
                     )}
                 </header>
 
-                {/* Table View (Desktop) */}
-                <div className="flex-1 bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col min-h-0 overflow-hidden">
+                {/* Table View (Desktop) / Card View (Mobile) */}
+                <div className="flex-1 bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col min-h-0 md:overflow-hidden">
                     <div className="overflow-auto custom-scrollbar flex-1">
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
@@ -371,7 +371,7 @@ const Ventas = () => {
                                 }, 0);
 
                                 return (
-                                    <div key={product.id} className={`p-4 flex flex-col gap-3 ${inCart ? 'bg-accent/5' : ''}`}>
+                                    <div key={product.id} className={`px-3 py-3 flex flex-col gap-2 ${inCart ? 'bg-accent/5' : ''}`}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${product.is_pack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim'}`}>
@@ -456,7 +456,7 @@ const Ventas = () => {
             </div>
 
             {/* Right: Cart/Summary Panel */}
-            <div className="lg:col-span-1 flex flex-col min-h-0">
+            <div className="lg:col-span-1 flex flex-col min-h-0 mt-2 lg:mt-0">
                 <div className="flex-1 flex flex-col bg-surface shadow-2xl overflow-hidden lg:border-l border-panel-border/10 min-h-0 rounded-2xl lg:rounded-none">
                     {/* Cart Header */}
                     <div className="p-6 bg-surface border-b border-panel-border/10 flex justify-between items-center z-10 shrink-0">
