@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useDialog } from '../context/DialogContext';
 import { formatMoney } from '../utils/formatters';
@@ -13,21 +13,8 @@ const Ventas = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [openPackDropdown, setOpenPackDropdown] = useState(null);
-    const dropdownRef = useRef(null);
 
-    // Close pack dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setOpenPackDropdown(null);
-            }
-        };
-        if (openPackDropdown !== null) {
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }
-    }, [openPackDropdown]);
+
 
     useEffect(() => {
         fetchData();
@@ -219,64 +206,47 @@ const Ventas = () => {
                                                 </div>
                                             </td>
                                             <td className="p-4 text-right pr-6">
-                                                <div className="flex items-center gap-2 justify-end relative">
-                                                    {/* Botón Unidad */}
+                                                <div className="flex flex-col items-end gap-1.5">
+                                                    {/* Botón Unidad — siempre visible */}
                                                     <button
                                                         onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
-                                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-panel-border/10 shadow-sm ${inCartUnit ? 'bg-accent text-void font-black' : 'bg-surface-highlight text-txt-dim hover:bg-accent/20'}`}
-                                                        title="Agregar Unidad"
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-accent/30 hover:bg-accent/5'}`}
                                                     >
-                                                        {inCartUnit ? <span className="text-[10px] font-black">{cart[`${product.id}_unit`]}</span> : <span className="material-icons text-lg">add</span>}
+                                                        {inCartUnit ? (
+                                                            <><span className="bg-void/20 text-void w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_unit`]}</span> Unid · {formatMoney(product.selling_price)}</>
+                                                        ) : (
+                                                            <><span className="material-icons text-sm">add</span> Unid · {formatMoney(product.selling_price)}</>
+                                                        )}
                                                     </button>
 
-                                                    {/* Botón Pack */}
-                                                    {(product.is_pack || (product.formats && product.formats.length > 0)) && (
-                                                        <div className="relative" ref={dropdownRef}>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (product.formats?.length > 0 || (product.is_pack && product.pack_size > 1)) {
-                                                                        setOpenPackDropdown(openPackDropdown === product.id ? null : product.id);
-                                                                    } else {
-                                                                        updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default');
-                                                                    }
-                                                                }}
-                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-panel-border/10 shadow-sm ${inCartPack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim hover:bg-void/10'}`}
-                                                                title="Agregar Pack"
-                                                            >
-                                                                <span className="material-icons text-lg">{inCartPack ? 'inventory' : 'inventory_2'}</span>
-                                                            </button>
-
-                                                            {/* Dropdown de Selección de Formatos */}
-                                                            {openPackDropdown === product.id && (
-                                                                <div className="absolute top-full right-0 mt-2 w-48 bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-[999] p-2 animate-[fadeIn_0.2s_ease-out]">
-                                                                    <div className="text-[8px] font-black uppercase text-txt-dim p-2 border-b border-panel-border/5 mb-2">Seleccionar Pack</div>
-
-                                                                    {/* Default Pack */}
-                                                                    {product.is_pack && (
-                                                                        <button
-                                                                            onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default'); setOpenPackDropdown(null); }}
-                                                                            className="w-full text-left p-2 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1"
-                                                                        >
-                                                                            <span className="text-[10px] font-black text-txt-primary uppercase">Pack x{product.pack_size}</span>
-                                                                            <span className="text-[10px] font-mono font-black text-accent">{formatMoney(product.pack_price)}</span>
-                                                                        </button>
-                                                                    )}
-
-                                                                    {/* Additional Formats */}
-                                                                    {product.formats?.map(fmt => (
-                                                                        <button
-                                                                            key={fmt.id}
-                                                                            onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id); setOpenPackDropdown(null); }}
-                                                                            className="w-full text-left p-2 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1"
-                                                                        >
-                                                                            <span className="text-[10px] font-black text-txt-primary uppercase">Pack x{fmt.pack_size}</span>
-                                                                            <span className="text-[10px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</span>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                    {/* Botón Pack default */}
+                                                    {product.is_pack && product.pack_price > 0 && (
+                                                        <button
+                                                            onClick={() => updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default')}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
+                                                        >
+                                                            {cart[`${product.id}_pack_default`] > 0 ? (
+                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_pack_default`]}</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
+                                                            ) : (
+                                                                <><span className="material-icons text-sm">inventory_2</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
                                                             )}
-                                                        </div>
+                                                        </button>
                                                     )}
+
+                                                    {/* Botones de formatos adicionales — cada uno visible */}
+                                                    {product.formats?.map(fmt => (
+                                                        <button
+                                                            key={fmt.id}
+                                                            onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
+                                                        >
+                                                            {cart[`${product.id}_pack_${fmt.id}`] > 0 ? (
+                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_pack_${fmt.id}`]}</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
+                                                            ) : (
+                                                                <><span className="material-icons text-sm">inventory_2</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
+                                                            )}
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             </td>
                                         </tr>
@@ -325,63 +295,45 @@ const Ventas = () => {
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                        <div className="flex flex-col gap-2 mt-1">
                                             {/* Mobile Unit Button */}
                                             <button
                                                 onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
-                                                className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-panel-border/10 shadow-sm ${inCartUnit ? 'bg-accent text-void font-black' : 'bg-surface-highlight text-txt-dim'}`}
+                                                className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
                                             >
-                                                <span className="material-icons text-sm">add</span>
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Unidad</span>
+                                                {inCartUnit ? (
+                                                    <><span className="bg-void/20 text-void w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_unit`]}</span> Unidad · {formatMoney(product.selling_price)}</>
+                                                ) : (
+                                                    <><span className="material-icons text-sm">add</span> Unidad · {formatMoney(product.selling_price)}</>
+                                                )}
                                             </button>
 
-                                            {/* Mobile Pack Button */}
-                                            {(product.is_pack || (product.formats && product.formats.length > 0)) ? (
-                                                <div className="relative">
-                                                    <button
-                                                        onClick={() => {
-                                                            if (product.formats?.length > 0 || (product.is_pack && product.pack_size > 1)) {
-                                                                setOpenPackDropdown(openPackDropdown === product.id ? null : product.id);
-                                                            } else {
-                                                                updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default');
-                                                            }
-                                                        }}
-                                                        className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-panel-border/10 shadow-sm ${inCartPack ? 'bg-void text-white' : 'bg-surface-highlight text-txt-dim'}`}
-                                                    >
-                                                        <span className="material-icons text-sm">{inCartPack ? 'inventory' : 'inventory_2'}</span>
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">Pack</span>
-                                                    </button>
-
-                                                    {/* Mobile Dropdown */}
-                                                    {openPackDropdown === product.id && (
-                                                        <div className="absolute bottom-full right-0 mb-2 w-full bg-surface border-2 border-panel-border/10 rounded-2xl shadow-2xl z-50 p-2 animate-[fadeIn_0.2s_ease-out]">
-                                                            {product.is_pack && (
-                                                                <button
-                                                                    onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default'); setOpenPackDropdown(null); }}
-                                                                    className="w-full text-left p-3 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1 border-b border-panel-border/5 last:border-0"
-                                                                >
-                                                                    <span className="text-[10px] font-black text-txt-primary uppercase">x{product.pack_size}</span>
-                                                                    <span className="text-[10px] font-mono font-black text-accent">{formatMoney(product.pack_price)}</span>
-                                                                </button>
-                                                            )}
-                                                            {product.formats?.map(fmt => (
-                                                                <button
-                                                                    key={fmt.id}
-                                                                    onClick={() => { updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id); setOpenPackDropdown(null); }}
-                                                                    className="w-full text-left p-3 hover:bg-accent/10 rounded-xl transition-all flex justify-between items-center group mb-1 border-b border-panel-border/5 last:border-0"
-                                                                >
-                                                                    <span className="text-[10px] font-black text-txt-primary uppercase">x{fmt.pack_size}</span>
-                                                                    <span className="text-[10px] font-mono font-black text-accent">{formatMoney(fmt.pack_price)}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
+                                            {/* Mobile Pack Buttons — each format as its own button */}
+                                            {product.is_pack && product.pack_price > 0 && (
+                                                <button
+                                                    onClick={() => updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default')}
+                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
+                                                >
+                                                    {cart[`${product.id}_pack_default`] > 0 ? (
+                                                        <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_pack_default`]}</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
+                                                    ) : (
+                                                        <><span className="material-icons text-sm">inventory_2</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
                                                     )}
-                                                </div>
-                                            ) : (
-                                                <div className="py-3 rounded-xl flex items-center justify-center gap-2 bg-gray-50 text-gray-300 border border-gray-100 italic cursor-not-allowed">
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">No Pack</span>
-                                                </div>
+                                                </button>
                                             )}
+                                            {product.formats?.map(fmt => (
+                                                <button
+                                                    key={fmt.id}
+                                                    onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
+                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
+                                                >
+                                                    {cart[`${product.id}_pack_${fmt.id}`] > 0 ? (
+                                                        <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_pack_${fmt.id}`]}</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
+                                                    ) : (
+                                                        <><span className="material-icons text-sm">inventory_2</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 );

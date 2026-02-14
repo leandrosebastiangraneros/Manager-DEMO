@@ -216,6 +216,7 @@ def generate_sale_invoice(tx_id: int):
         TableStyle,
         Paragraph,
         Spacer,
+        Image,
     )
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT
@@ -282,8 +283,24 @@ def generate_sale_invoice(tx_id: int):
     style_center = ParagraphStyle("Center", parent=styles["Normal"], alignment=TA_CENTER)
     style_right = ParagraphStyle("Right", parent=styles["Normal"], alignment=TA_RIGHT)
 
-    # Header
-    elements.append(Paragraph("<b>NovaManager</b>", styles["Title"]))
+    # Header — Logo + Company Name
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "logo.png")
+    if os.path.exists(logo_path):
+        logo = Image(logo_path, width=35 * mm, height=35 * mm)
+        logo.hAlign = "CENTER"
+        elements.append(logo)
+        elements.append(Spacer(1, 5))
+
+    elements.append(Paragraph(
+        "<b>CENTRO DE ABARATAMIENTO MAYORISTA</b>",
+        ParagraphStyle("CompanyName", parent=styles["Title"], fontSize=14, alignment=TA_CENTER),
+    ))
+    elements.append(Paragraph(
+        "Mercado Central Ezeiza",
+        ParagraphStyle("CompanySub", parent=styles["Normal"], fontSize=9,
+                       alignment=TA_CENTER, textColor=colors.HexColor("#555555")),
+    ))
+    elements.append(Spacer(1, 5))
     elements.append(Paragraph("Factura de Venta", style_center))
     elements.append(Spacer(1, 15))
 
@@ -311,7 +328,7 @@ def generate_sale_invoice(tx_id: int):
     t.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2E7D32")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 9),
@@ -320,7 +337,7 @@ def generate_sale_invoice(tx_id: int):
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                 ("FONTSIZE", (0, 1), (-1, -1), 8),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0f7f0")]),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
@@ -342,7 +359,7 @@ def generate_sale_invoice(tx_id: int):
     # Footer
     elements.append(
         Paragraph(
-            "Documento no fiscal — Generado por NovaManager",
+            "Documento no fiscal — Centro de Abaratamiento Mayorista · Mercado Central Ezeiza",
             ParagraphStyle("Footer", parent=styles["Normal"], alignment=TA_CENTER,
                            fontSize=7, textColor=colors.grey),
         )
