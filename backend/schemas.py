@@ -150,3 +150,9 @@ class AppMovement(AppMovementBase):
     sale_id: Optional[int] = None
     class Config:
         from_attributes = True
+
+class BulkUpdateRequest(BaseModel):
+    target_field: str  # "cost", "price", "both"
+    percentage: float  # e.g., 10.0 for +10%, -5.0 for -5%
+    category_id: Optional[int] = None
+    brand: Optional[str] = None

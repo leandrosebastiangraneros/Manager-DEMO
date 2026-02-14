@@ -7,10 +7,12 @@ import { formatMoney } from '../utils/formatters';
 import { useStock } from '../hooks/useStock';
 import EditStockModal from './stock/EditStockModal';
 import SellModal from './stock/SellModal';
+import PriceUpdateModal from './stock/PriceUpdateModal';
 
 const Stock = () => {
     const stock = useStock();
     const [formOpen, setFormOpen] = useState(false);
+    const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
 
     if (stock.loading) return (
         <div className="flex flex-col items-center justify-center h-[50vh] text-txt-dim animate-pulse">
@@ -28,7 +30,16 @@ const Stock = () => {
                         <h1 className="text-2xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1 uppercase">
                             INVENTARIO <span className="text-accent">ACTUAL</span>
                         </h1>
-                        <p className="text-txt-secondary text-xs font-semibold">Configura stock, precios y modalidades de venta.</p>
+                        <div className="flex items-center gap-4">
+                            <p className="text-txt-secondary text-xs font-semibold">Configura stock, precios y modalidades de venta.</p>
+                            <button
+                                onClick={() => setIsPriceModalOpen(true)}
+                                className="hidden md:flex bg-accent/10 text-accent hover:bg-accent hover:text-void px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all items-center gap-1 border border-accent/20"
+                            >
+                                <span className="material-icons text-base">price_check</span>
+                                Actualizar Precios
+                            </button>
+                        </div>
                     </div>
 
                     <div className="relative group shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-surface flex-1 md:w-80 border border-panel-border/5">
@@ -287,6 +298,16 @@ const Stock = () => {
                 sellQuantity={stock.sellQuantity} setSellQuantity={stock.setSellQuantity}
                 workDesc={stock.workDesc} setWorkDesc={stock.setWorkDesc}
                 onSubmit={stock.handleSellSubmit}
+            />
+
+            <PriceUpdateModal
+                isOpen={isPriceModalOpen}
+                onClose={() => setIsPriceModalOpen(false)}
+                categories={stock.categories}
+                onUpdateComplete={() => {
+                    stock.fetchData();
+                    setIsPriceModalOpen(false);
+                }}
             />
         </div>
     );

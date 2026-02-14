@@ -283,3 +283,69 @@ def create_stock_format(format: schemas.StockItemFormatCreate):
 def delete_stock_format(format_id: int):
     supabase.table("stock_item_formats").delete().eq("id", format_id).execute()
     return {"status": "deleted"}
+
+@router.post("/stock/bulk-update")
+def bulk_update_prices(request: schemas.BulkUpdateRequest):
+    """
+    Update prices (cost/selling/pack) for multiple items based on filters.
+    percentage: positive for increase, negative for discount.
+    """
+    try:
+        # Build query
+        query = supabase.table("stock_items").select("*")
+        
+        if request.category_id:
+            query = query.eq("category_id", request.category_id)
+        if request.brand:
+            query = query.ilike("brand", f"%{request.brand}%")
+            
+        items = query.execute().data
+        
+        if not items:
+            return {"status": "no_items", "count": 0, "message": "No se encontraron productos con los filtros seleccionados."}
+        
+        updated_count = 0
+        factor = 1 + (request.percentage / 100.0)
+        
+        for item in items:
+            updates = {}
+            
+            # Update Unit Cost
+            if request.target_field in ["cost", "both"]:
+                 updates["unit_cost"] = (item.get("unit_cost") or 0) * factor
+                 # Usually cost_amount tracks total historical cost, but for future ref we might update unit_cost
+            
+            # Update Selling Price
+            if request.target_field in ["price", "both"]:
+                if item.get("selling_price"):
+                    updates["selling_price"] = item["selling_price"] * factor
+                
+                if item.get("pack_price"):
+                    updates["pack_price"] = item["pack_price"] * factor
+            
+            if updates:
+                supabase.table("stock_items").update(updates).eq("id", item["id"]).execute()
+                updated_count += 1
+                
+                # Update formats if they exist
+                if request.target_field in ["price", "both"]:
+                    f_res = supabase.table("stock_item_formats").select("*").eq("stock_item_id", item["id"]).execute()
+                    formats = f_res.data
+                    if formats:
+                        for fmt in formats:
+                            new_p = (fmt.get("pack_price") or 0) * factor
+                            supabase.table("stock_item_formats").update({"pack_price": new_p}).eq("id", fmt["id"]).execute()
+
+        # Log movement
+        log_movement(
+            "STOCK",
+            "UPDATE_PRICE",
+            f"Actualización masiva: {request.percentage}% en {request.target_field} ({updated_count} items). Filtros: Cat={request.category_id}, Brand={request.brand}",
+            {"count": updated_count, "percentage": request.percentage, "target": request.target_field}
+        )
+
+        return {"status": "success", "count": updated_count, "message": f"Se actualizaron {updated_count} productos correctamente."}
+
+    except Exception as e:
+        logger.error(f"Error en bulk update: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
