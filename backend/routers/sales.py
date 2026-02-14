@@ -105,6 +105,34 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
     total_sale_amount = 0.0
     processed_items = []
 
+
+    # Validate stock availability for all items first
+    for s_item in batch.items:
+        res = supabase.table("stock_items").select("quantity, name, pack_size, selling_price, pack_price").eq("id", s_item.item_id).single().execute()
+        product = res.data
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
+        
+        # Calculate deduction
+        current_stock = product["quantity"]
+        p_size = 1
+        if s_item.is_pack:
+            if s_item.format_id:
+                f_res = supabase.table("stock_item_formats").select("pack_size").eq("id", s_item.format_id).single().execute()
+                if f_res.data:
+                    p_size = f_res.data["pack_size"]
+            else:
+                p_size = product.get("pack_size") or 1
+        
+        deduct_qty = s_item.quantity * p_size
+        
+        if deduct_qty > current_stock:
+             raise HTTPException(
+                status_code=400, 
+                detail=f"Stock insuficiente para {product['name']}. Solicitado: {deduct_qty} unid. (en packs/unid), Disponible: {current_stock}"
+            )
+
+    # Proceed with processing
     for s_item in batch.items:
         res = (
             supabase.table("stock_items")
@@ -114,11 +142,8 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
             .execute()
         )
         product = res.data
-        if not product:
-            raise HTTPException(
-                status_code=404, detail=f"Producto {s_item.item_id} no encontrado"
-            )
-
+        
+        # Recalculate values for processing (formatting params etc)
         if s_item.is_pack:
             format_data = None
             if s_item.format_id:
@@ -130,7 +155,7 @@ def create_batch_sale(batch: schemas.BatchSaleRequest):
                     .execute()
                 )
                 format_data = f_res.data
-
+            
             if format_data:
                 price = format_data["pack_price"]
                 p_size = format_data["pack_size"]

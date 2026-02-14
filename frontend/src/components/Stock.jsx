@@ -329,11 +329,23 @@ const StockRow = ({ item, onEdit, onDelete }) => {
             </td>
             <td className="p-4 text-center">
                 <div className="flex flex-col items-center">
-                    <span className={`text-[14px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
-                        {item.quantity}
-                    </span>
+                    {item.is_pack && item.pack_size > 1 ? (
+                        <>
+                            <span className={`text-[14px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
+                                {Math.floor(item.quantity / item.pack_size)} Packs
+                            </span>
+                            <span className="text-[9px] text-txt-dim font-bold">
+                                ({item.quantity} unid)
+                            </span>
+                        </>
+                    ) : (
+                        <span className={`text-[14px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
+                            {item.quantity}
+                        </span>
+                    )}
+
                     {(item.is_pack || (item.formats && item.formats.length > 0)) && item.pack_size > 1 && (
-                        <span className="text-[8px] text-txt-dim font-bold uppercase tracking-widest">x{item.pack_size} p/u</span>
+                        <span className="text-[8px] text-txt-dim font-bold uppercase tracking-widest mt-0.5">x{item.pack_size} p/u</span>
                     )}
                 </div>
             </td>
@@ -399,7 +411,18 @@ const MobileStockCard = ({ item, onEdit, onDelete }) => {
             <div className="flex flex-col gap-2 bg-surface-highlight/40 p-3 rounded-2xl border border-panel-border/5">
                 <div className="flex justify-between items-center">
                     <span className="text-[8px] text-txt-dim uppercase font-black">Stock Actual</span>
-                    <div className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
+                    <div className="flex flex-col items-end">
+                        {item.is_pack && item.pack_size > 1 ? (
+                            <>
+                                <span className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
+                                    {Math.floor(item.quantity / item.pack_size)} Packs
+                                </span>
+                                <span className="text-[9px] text-txt-dim font-bold">({item.quantity} unid)</span>
+                            </>
+                        ) : (
+                            <div className={`text-sm font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>{item.quantity}</div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex flex-col gap-2 mt-1 pt-2 border-t border-panel-border/5">
                     <div className="flex justify-between items-center">
