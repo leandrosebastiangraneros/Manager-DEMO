@@ -63,7 +63,7 @@ class StockItemCreate(StockItemBase):
 class StockItem(StockItemBase):
     id: int
     quantity: float
-    unit_cost: float
+    unit_cost: Optional[float] = 0
     purchase_date: datetime
     status: str
     purchase_tx_id: Optional[int] = None
