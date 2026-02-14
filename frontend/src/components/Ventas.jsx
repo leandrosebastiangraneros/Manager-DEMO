@@ -84,7 +84,7 @@ const Ventas = () => {
                                 <span className="material-icons text-xl">inventory_2</span>
                             </div>
                             <div>
-                                <div className="text-[9px] font-black text-txt-dim uppercase tracking-widest">Productos</div>
+                                <div className="text-xs font-black text-txt-dim uppercase tracking-widest">Productos</div>
                                 <div className="text-lg font-mono font-black text-txt-primary">{products.length}</div>
                             </div>
                         </div>
@@ -93,7 +93,7 @@ const Ventas = () => {
                                 <span className="material-icons text-xl">warning_amber</span>
                             </div>
                             <div>
-                                <div className="text-[9px] font-black text-txt-dim uppercase tracking-widest">Stock Bajo</div>
+                                <div className="text-xs font-black text-txt-dim uppercase tracking-widest">Stock Bajo</div>
                                 <div className="text-lg font-mono font-black text-orange-600">
                                     {products.filter(p => p.quantity <= (p.min_stock_alert || 0)).length}
                                 </div>
@@ -104,7 +104,7 @@ const Ventas = () => {
                                 <span className="material-icons text-xl">shopping_cart</span>
                             </div>
                             <div>
-                                <div className="text-[9px] font-black text-txt-dim group-hover:text-void uppercase tracking-widest transition-colors">Total Pedido</div>
+                                <div className="text-xs font-black text-txt-dim group-hover:text-void uppercase tracking-widest transition-colors">Total Pedido</div>
                                 <div className="text-lg font-mono font-black text-txt-primary group-hover:text-void transition-colors">{formatMoney(cartTotal)}</div>
                             </div>
                         </div>
@@ -136,7 +136,7 @@ const Ventas = () => {
                     <div className="overflow-auto custom-scrollbar flex-1">
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
-                                <tr className="bg-gray-50/50 text-txt-primary text-[10px] uppercase font-black tracking-widest border-b border-panel-border/10 sticky top-0 bg-surface z-10 backdrop-blur-md">
+                                <tr className="bg-gray-50/50 text-txt-primary text-xs uppercase font-black tracking-widest border-b border-panel-border/10 sticky top-0 bg-surface z-10 backdrop-blur-md">
                                     <th className="p-4 pl-6">Producto</th>
                                     <th className="p-4 hidden md:table-cell text-center">Categoría</th>
                                     <th className="p-4 text-center">Stock</th>
@@ -170,13 +170,13 @@ const Ventas = () => {
                                                             </span>
                                                         </div>
                                                         {itemInCartCount > 0 && (
-                                                            <span className="text-[9px] text-accent font-black uppercase tracking-widest animate-pulse">En Carrito ({itemInCartCount})</span>
+                                                            <span className="text-xs text-accent font-black uppercase tracking-widest animate-pulse">En Carrito ({itemInCartCount})</span>
                                                         )}
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="p-4 hidden md:table-cell text-center">
-                                                <span className="px-2 py-1 bg-surface-highlight text-txt-dim rounded-lg text-[9px] font-black uppercase tracking-widest border border-panel-border/10">
+                                                <span className="px-2 py-1 bg-surface-highlight text-txt-dim rounded-lg text-xs font-black uppercase tracking-widest border border-panel-border/10">
                                                     {categories.find(c => c.id === product.category_id)?.name || 'Otros'}
                                                 </span>
                                             </td>
@@ -185,7 +185,7 @@ const Ventas = () => {
                                                     <span className={`text-[13px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-primary'}`}>
                                                         {product.quantity}
                                                     </span>
-                                                    <span className={`text-[8px] font-black uppercase tracking-tighter ${isLowStock ? 'text-orange-500' : 'text-txt-dim'}`}>
+                                                    <span className={`text-xs font-black uppercase tracking-tighter ${isLowStock ? 'text-orange-500' : 'text-txt-dim'}`}>
                                                         {isLowStock ? 'Stock Bajo' : 'Disponible'}
                                                     </span>
                                                 </div>
@@ -193,14 +193,14 @@ const Ventas = () => {
                                             <td className="p-4 hidden lg:table-cell text-right">
                                                 <div className="flex flex-col items-end">
                                                     <span className="text-[13px] font-mono font-black text-txt-primary">{formatMoney(product.selling_price)}</span>
-                                                    {product.is_pack && product.pack_price > 0 && <span className="text-[8px] text-accent font-black uppercase tracking-tighter">Pack x{product.pack_size}: {formatMoney(product.pack_price)}</span>}
+                                                    {product.is_pack && product.pack_price > 0 && <span className="text-xs text-accent font-black uppercase tracking-tighter">Pack x{product.pack_size}: {formatMoney(product.pack_price)}</span>}
                                                     {product.formats?.map(fmt => (
-                                                        <span key={fmt.id} className="text-[7px] text-txt-dim font-black uppercase tracking-tighter block">Pack x{fmt.pack_size}: {formatMoney(fmt.pack_price)}</span>
+                                                        <span key={fmt.id} className="text-[11px] text-txt-dim font-black uppercase tracking-tighter block">Pack x{fmt.pack_size}: {formatMoney(fmt.pack_price)}</span>
                                                     ))}
                                                 </div>
                                             </td>
                                             <td className="p-4 hidden md:table-cell text-center">
-                                                <div className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm flex items-center justify-center w-fit mx-auto gap-1.5 ${isLowStock ? 'bg-orange-500/10 text-orange-600' : 'bg-green-500/10 text-green-600'}`}>
+                                                <div className={`px-2 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-sm flex items-center justify-center w-fit mx-auto gap-1.5 ${isLowStock ? 'bg-orange-500/10 text-orange-600' : 'bg-green-500/10 text-green-600'}`}>
                                                     <div className={`w-1 h-1 rounded-full ${isLowStock ? 'bg-orange-600 animate-pulse' : 'bg-green-600'}`}></div>
                                                     {isLowStock ? 'Crítico' : 'Disponible'}
                                                 </div>
@@ -210,10 +210,10 @@ const Ventas = () => {
                                                     {/* Botón Unidad — siempre visible */}
                                                     <button
                                                         onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
-                                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-accent/30 hover:bg-accent/5'}`}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-accent/30 hover:bg-accent/5'}`}
                                                     >
                                                         {inCartUnit ? (
-                                                            <><span className="bg-void/20 text-void w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_unit`]}</span> Unid · {formatMoney(product.selling_price)}</>
+                                                            <><span className="bg-void/20 text-void w-5 h-5 rounded-md flex items-center justify-center text-xs">{cart[`${product.id}_unit`]}</span> Unid · {formatMoney(product.selling_price)}</>
                                                         ) : (
                                                             <><span className="material-icons text-sm">add</span> Unid · {formatMoney(product.selling_price)}</>
                                                         )}
@@ -223,10 +223,10 @@ const Ventas = () => {
                                                     {product.is_pack && product.pack_price > 0 && (
                                                         <button
                                                             onClick={() => updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default')}
-                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
                                                         >
                                                             {cart[`${product.id}_pack_default`] > 0 ? (
-                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_pack_default`]}</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
+                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-xs">{cart[`${product.id}_pack_default`]}</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
                                                             ) : (
                                                                 <><span className="material-icons text-sm">inventory_2</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
                                                             )}
@@ -238,10 +238,10 @@ const Ventas = () => {
                                                         <button
                                                             key={fmt.id}
                                                             onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
-                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-black uppercase tracking-tight border shadow-sm whitespace-nowrap ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10 hover:border-void/30 hover:bg-void/5'}`}
                                                         >
                                                             {cart[`${product.id}_pack_${fmt.id}`] > 0 ? (
-                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-[10px]">{cart[`${product.id}_pack_${fmt.id}`]}</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
+                                                                <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center text-xs">{cart[`${product.id}_pack_${fmt.id}`]}</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
                                                             ) : (
                                                                 <><span className="material-icons text-sm">inventory_2</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
                                                             )}
@@ -279,17 +279,17 @@ const Ventas = () => {
                                                         {product.brand ? `${product.brand} ` : ''}{product.name}
                                                     </span>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className={`text-[9px] font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-dim'}`}>
+                                                        <span className={`text-xs font-mono font-black ${isLowStock ? 'text-orange-600' : 'text-txt-dim'}`}>
                                                             Stock: {product.quantity}
                                                         </span>
-                                                        <span className="text-[9px] font-mono font-black text-accent">
+                                                        <span className="text-xs font-mono font-black text-accent">
                                                             {formatMoney(product.selling_price)}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             {itemInCartCount > 0 && (
-                                                <span className="text-[8px] bg-accent text-void px-2 py-0.5 rounded-full font-black uppercase tracking-widest animate-pulse">
+                                                <span className="text-xs bg-accent text-void px-2 py-0.5 rounded-full font-black uppercase tracking-widest animate-pulse">
                                                     En Carrito ({itemInCartCount})
                                                 </span>
                                             )}
@@ -299,7 +299,7 @@ const Ventas = () => {
                                             {/* Mobile Unit Button */}
                                             <button
                                                 onClick={() => updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit')}
-                                                className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
+                                                className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-xs uppercase tracking-tight ${inCartUnit ? 'bg-accent text-void border-accent' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
                                             >
                                                 {inCartUnit ? (
                                                     <><span className="bg-void/20 text-void w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_unit`]}</span> Unidad · {formatMoney(product.selling_price)}</>
@@ -312,7 +312,7 @@ const Ventas = () => {
                                             {product.is_pack && product.pack_price > 0 && (
                                                 <button
                                                     onClick={() => updateCart(product.id, (cart[`${product.id}_pack_default`] || 0) + 1, 'pack', 'default')}
-                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
+                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-xs uppercase tracking-tight ${cart[`${product.id}_pack_default`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
                                                 >
                                                     {cart[`${product.id}_pack_default`] > 0 ? (
                                                         <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_pack_default`]}</span> Pack x{product.pack_size} · {formatMoney(product.pack_price)}</>
@@ -325,7 +325,7 @@ const Ventas = () => {
                                                 <button
                                                     key={fmt.id}
                                                     onClick={() => updateCart(product.id, (cart[`${product.id}_pack_${fmt.id}`] || 0) + 1, 'pack', fmt.id)}
-                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-[10px] uppercase tracking-tight ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
+                                                    className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border shadow-sm font-black text-xs uppercase tracking-tight ${cart[`${product.id}_pack_${fmt.id}`] > 0 ? 'bg-void text-white border-void' : 'bg-surface-highlight text-txt-primary border-panel-border/10'}`}
                                                 >
                                                     {cart[`${product.id}_pack_${fmt.id}`] > 0 ? (
                                                         <><span className="bg-white/20 text-white w-5 h-5 rounded-md flex items-center justify-center">{cart[`${product.id}_pack_${fmt.id}`]}</span> Pack x{fmt.pack_size} · {formatMoney(fmt.pack_price)}</>
@@ -359,9 +359,9 @@ const Ventas = () => {
                     <div className="p-6 bg-surface border-b border-panel-border/10 flex justify-between items-center z-10 shrink-0">
                         <div>
                             <h2 className="text-lg font-black text-txt-primary tracking-tight uppercase leading-none">Pedido Actual</h2>
-                            <p className="text-[9px] text-txt-dim font-black uppercase tracking-widest mt-1.5">{new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                            <p className="text-xs text-txt-dim font-black uppercase tracking-widest mt-1.5">{new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
                         </div>
-                        <div className="w-8 h-8 bg-void text-white text-[10px] font-black flex items-center justify-center rounded-xl shadow-lg">
+                        <div className="w-8 h-8 bg-void text-white text-xs font-black flex items-center justify-center rounded-xl shadow-lg">
                             {Object.values(cart).reduce((a, b) => a + b, 0)}
                         </div>
                     </div>
@@ -373,7 +373,7 @@ const Ventas = () => {
                                 <div className="w-12 h-12 rounded-2xl bg-surface-highlight flex items-center justify-center mb-3">
                                     <span className="material-icons text-3xl">shopping_bag</span>
                                 </div>
-                                <p className="text-[8px] font-black uppercase tracking-widest">Carrito Vacío</p>
+                                <p className="text-xs font-black uppercase tracking-widest">Carrito Vacío</p>
                             </div>
                         ) : (
                             Object.entries(cart)
@@ -415,7 +415,7 @@ const Ventas = () => {
                                                     type="number"
                                                     value={qty}
                                                     onChange={(e) => updateCart(product.id, e.target.value, type, fId === 'default' ? 'default' : parseInt(fId))}
-                                                    className="w-full text-center text-[10px] font-black font-mono text-txt-primary py-0.5 bg-surface outline-none border-none"
+                                                    className="w-full text-center text-xs font-black font-mono text-txt-primary py-0.5 bg-surface outline-none border-none"
                                                 />
                                                 <button
                                                     onClick={() => updateCart(product.id, Math.max(0, qty - 1), type, fId === 'default' ? 'default' : parseInt(fId))}
@@ -426,13 +426,13 @@ const Ventas = () => {
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-txt-primary text-[10px] font-black uppercase tracking-tight truncate leading-tight">
-                                                    {type === 'pack' ? <span className="text-[7px] bg-void text-white px-1 py-0.5 rounded mr-1 font-black">PK</span> : <span className="text-[7px] bg-accent text-void px-1 py-0.5 rounded mr-1 font-black">UN</span>}
+                                                <div className="text-txt-primary text-xs font-black uppercase tracking-tight truncate leading-tight">
+                                                    {type === 'pack' ? <span className="text-[11px] bg-void text-white px-1 py-0.5 rounded mr-1 font-black">PK</span> : <span className="text-[11px] bg-accent text-void px-1 py-0.5 rounded mr-1 font-black">UN</span>}
                                                     {product.brand ? `${product.brand} ` : ''}{product.name}
                                                 </div>
                                                 <div className="flex justify-between items-center mt-1">
-                                                    <div className="text-[8px] font-black text-txt-dim uppercase tracking-widest">{label}</div>
-                                                    <div className="text-[9px] text-txt-dim flex items-center gap-x-1.5 font-bold">
+                                                    <div className="text-xs font-black text-txt-dim uppercase tracking-widest">{label}</div>
+                                                    <div className="text-xs text-txt-dim flex items-center gap-x-1.5 font-bold">
                                                         <span className="font-mono text-accent">{formatMoney(price)}</span>
                                                         <span className="font-mono text-txt-primary">{formatMoney(price * qty)}</span>
                                                     </div>
@@ -454,7 +454,7 @@ const Ventas = () => {
                     {/* Cart Footer */}
                     <div className="p-6 bg-surface border-t border-panel-border/10 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] space-y-4 z-20 shrink-0">
                         <div className="flex justify-between items-end">
-                            <span className="text-[9px] font-black text-txt-dim uppercase tracking-widest mb-1.5">Total a Pagar</span>
+                            <span className="text-xs font-black text-txt-dim uppercase tracking-widest mb-1.5">Total a Pagar</span>
                             <span className="text-3xl font-mono font-black text-txt-primary tracking-tighter">
                                 {formatMoney(cartTotal)}
                             </span>
@@ -471,7 +471,7 @@ const Ventas = () => {
                                 />
                             </div>
                             <button
-                                className="w-full py-4 bg-void text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-void/20 hover:bg-accent hover:text-void transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
+                                className="w-full py-4 bg-void text-white rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-void/20 hover:bg-accent hover:text-void transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
                                 onClick={handleConfirmSale}
                                 disabled={submitting || Object.keys(cart).length === 0}
                             >
