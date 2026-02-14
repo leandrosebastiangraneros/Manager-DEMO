@@ -151,10 +151,10 @@ const Ventas = () => {
     );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 lg:gap-6 h-[calc(100vh-3rem)] overflow-hidden">
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6 p-4 lg:p-0 lg:h-[calc(100vh-3rem)] lg:overflow-hidden">
 
             {/* Left: Product Selection Area */}
-            <div className="lg:col-span-3 flex flex-col min-h-0 overflow-hidden">
+            <div className="lg:col-span-3 flex flex-col min-h-0 lg:overflow-hidden">
                 <header className="mb-3 flex-shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                         <div>
@@ -166,7 +166,7 @@ const Ventas = () => {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
                         <div className="bg-surface p-4 rounded-2xl border border-panel-border/5 shadow-sm flex items-center gap-4 group hover:border-accent/20 transition-all">
                             <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <span className="material-icons text-xl">inventory_2</span>
@@ -224,8 +224,8 @@ const Ventas = () => {
                         <button
                             onClick={scannerOpen ? closeCameraScanner : openCameraScanner}
                             className={`px-5 rounded-2xl border-2 shadow-md flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${scannerOpen
-                                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
-                                    : 'bg-surface text-accent border-accent/20 hover:border-accent/50 hover:bg-accent/5'
+                                ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                                : 'bg-surface text-accent border-accent/20 hover:border-accent/50 hover:bg-accent/5'
                                 }`}
                         >
                             <span className="material-icons text-xl">{scannerOpen ? 'close' : 'qr_code_scanner'}</span>
@@ -457,7 +457,7 @@ const Ventas = () => {
 
             {/* Right: Cart/Summary Panel */}
             <div className="lg:col-span-1 flex flex-col min-h-0">
-                <div className="flex-1 flex flex-col bg-surface shadow-2xl overflow-hidden border-l border-panel-border/10 min-h-0">
+                <div className="flex-1 flex flex-col bg-surface shadow-2xl overflow-hidden lg:border-l border-panel-border/10 min-h-0 rounded-2xl lg:rounded-none">
                     {/* Cart Header */}
                     <div className="p-6 bg-surface border-b border-panel-border/10 flex justify-between items-center z-10 shrink-0">
                         <div>
