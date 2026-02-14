@@ -24,6 +24,7 @@ export function useStock() {
     const [editingId, setEditingId] = useState(null);
     const [newItemName, setNewItemName] = useState('');
     const [newItemBrand, setNewItemBrand] = useState('');
+    const [newItemBarcode, setNewItemBarcode] = useState('');
     const [isPack, setIsPack] = useState(false);
     const [packSize, setPackSize] = useState('1');
     const [newItemCost, setNewItemCost] = useState('');
@@ -110,6 +111,7 @@ export function useStock() {
     const resetForm = useCallback(() => {
         setNewItemName('');
         setNewItemBrand('');
+        setNewItemBarcode('');
         setNewItemCost('');
         setNewItemQuantity('1');
         setNewItemSellingPrice('');
@@ -128,6 +130,7 @@ export function useStock() {
         setSelectedItem(item);
         setNewItemName(item.name);
         setNewItemBrand(item.brand || '');
+        setNewItemBarcode(item.barcode || '');
         setNewItemCost(item.unit_cost);
         setNewItemQuantity(item.quantity);
         setNewItemSellingPrice(item.selling_price);
@@ -156,6 +159,7 @@ export function useStock() {
             item_id: selectedExisting ? selectedExisting.id : null,
             name: newItemName,
             brand: newItemBrand,
+            barcode: newItemBarcode || null,
             is_pack: isPack,
             pack_size: pSize,
             cost_amount: costAmount,
@@ -167,7 +171,7 @@ export function useStock() {
 
         setDraftItems(prev => [...prev, draftItem]);
         resetForm();
-    }, [newItemName, newItemBrand, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, isPack, packSize, newItemCategoryId, selectedExisting, showAlert, resetForm]);
+    }, [newItemName, newItemBrand, newItemBarcode, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, isPack, packSize, newItemCategoryId, selectedExisting, showAlert, resetForm]);
 
     const handleSaveBatch = useCallback(async () => {
         if (draftItems.length === 0) return;
@@ -199,6 +203,7 @@ export function useStock() {
             const payload = {
                 name: newItemName,
                 brand: newItemBrand,
+                barcode: newItemBarcode || null,
                 is_pack: isPack,
                 pack_size: parseFloat(packSize) || 1,
                 cost_amount: parseFloat(newItemCost) * parseFloat(newItemQuantity),
@@ -226,7 +231,7 @@ export function useStock() {
         } catch (err) {
             showAlert("Error crítico al actualizar", "error");
         }
-    }, [editingId, newItemName, newItemBrand, isPack, packSize, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, newItemCategoryId, minStockAlert, fetchStock, showAlert]);
+    }, [editingId, newItemName, newItemBrand, newItemBarcode, isPack, packSize, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, newItemCategoryId, minStockAlert, fetchStock, showAlert]);
 
     const handleDeleteClick = useCallback(async (item) => {
         if (window.confirm(`¿Estás seguro de que deseas eliminar ${item.name}?`)) {
@@ -272,6 +277,7 @@ export function useStock() {
         setSelectedExisting(item);
         setNewItemName(item.name);
         setNewItemBrand(item.brand || '');
+        setNewItemBarcode(item.barcode || '');
         setNewItemSellingPrice(item.selling_price || '');
         setNewItemPackPrice(item.pack_price || '');
         setNewItemCategoryId(item.category_id || '');
@@ -294,6 +300,7 @@ export function useStock() {
         isEditing, editingId,
         newItemName, setNewItemName,
         newItemBrand, setNewItemBrand,
+        newItemBarcode, setNewItemBarcode,
         isPack, setIsPack,
         packSize, setPackSize,
         newItemCost, setNewItemCost,

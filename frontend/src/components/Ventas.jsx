@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { API_URL } from '../config';
 import { useDialog } from '../context/DialogContext';
 import { formatMoney } from '../utils/formatters';
@@ -13,6 +14,12 @@ const Ventas = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const scannerRef = useRef(null);
+    const html5QrRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const lastKeyTime = useRef(0);
+    const scanBuffer = useRef('');
 
 
 
@@ -48,9 +55,90 @@ const Ventas = () => {
 
     // formatMoney imported from utils/formatters.js (null-safe)
 
+    // --- BARCODE SCANNER LOGIC ---
+    const handleBarcodeScanned = useCallback((code) => {
+        const product = products.find(p => p.barcode === code);
+        if (product) {
+            updateCart(product.id, (cart[`${product.id}_unit`] || 0) + 1, 'unit');
+            toast.success(`${product.brand ? product.brand + ' ' : ''}${product.name} agregado`, {
+                icon: '✅',
+                duration: 1500,
+            });
+        } else {
+            toast.error(`Código ${code} no encontrado`, {
+                icon: '❌',
+                duration: 2500,
+            });
+        }
+        setSearchTerm('');
+        searchInputRef.current?.focus();
+    }, [products, cart, updateCart]);
+
+    // Keyboard/USB scanner detection: fast input + Enter
+    const handleSearchKeyDown = useCallback((e) => {
+        const now = Date.now();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const code = scanBuffer.current.trim();
+            if (code.length >= 4) {
+                handleBarcodeScanned(code);
+            }
+            scanBuffer.current = '';
+            return;
+        }
+        // If chars come fast (<80ms apart), it's a scanner
+        if (now - lastKeyTime.current < 80) {
+            scanBuffer.current += e.key;
+        } else {
+            scanBuffer.current = e.key;
+        }
+        lastKeyTime.current = now;
+    }, [handleBarcodeScanned]);
+
+    // Camera scanner
+    const openCameraScanner = useCallback(async () => {
+        setScannerOpen(true);
+        // Wait for DOM to mount the container
+        setTimeout(async () => {
+            try {
+                const html5Qr = new Html5Qrcode('barcode-reader');
+                html5QrRef.current = html5Qr;
+                await html5Qr.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (decodedText) => {
+                        handleBarcodeScanned(decodedText);
+                        html5Qr.stop().then(() => {
+                            html5Qr.clear();
+                            html5QrRef.current = null;
+                            setScannerOpen(false);
+                        });
+                    },
+                    () => { } // ignore errors during scanning
+                );
+            } catch (err) {
+                console.error('Camera error:', err);
+                toast.error('No se pudo acceder a la cámara');
+                setScannerOpen(false);
+            }
+        }, 300);
+    }, [handleBarcodeScanned]);
+
+    const closeCameraScanner = useCallback(async () => {
+        if (html5QrRef.current) {
+            try {
+                await html5QrRef.current.stop();
+                html5QrRef.current.clear();
+            } catch (e) { /* ignore */ }
+            html5QrRef.current = null;
+        }
+        setScannerOpen(false);
+    }, []);
+
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+        (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (p.barcode && p.barcode.includes(searchTerm))
     );
 
     // cartTotal is now provided by useCart hook
@@ -110,26 +198,51 @@ const Ventas = () => {
                         </div>
                     </div>
 
-                    {/* Search Bar — Prominent */}
-                    <div className="relative group shadow-md hover:shadow-lg transition-shadow duration-300 rounded-2xl bg-surface w-full border-2 border-accent/20 focus-within:border-accent/50">
-                        <span className="material-icons absolute left-5 top-1/2 -translate-y-1/2 text-accent/50 group-focus-within:text-accent transition-colors text-2xl">search</span>
-                        <input
-                            type="text"
-                            placeholder="Buscar producto o marca..."
-                            autoFocus
-                            className="w-full bg-transparent border-none pl-14 pr-12 py-4 text-txt-primary font-bold text-base rounded-2xl outline-none placeholder:text-txt-dim/60"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        {searchTerm && (
-                            <button
-                                onClick={() => setSearchTerm('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface-highlight p-1.5 rounded-full text-txt-dim hover:bg-red-100 hover:text-red-500 transition-colors"
-                            >
-                                <span className="material-icons text-sm">close</span>
-                            </button>
-                        )}
+                    {/* Search Bar — Prominent + Scanner Button */}
+                    <div className="flex gap-3 items-stretch">
+                        <div className="relative group shadow-md hover:shadow-lg transition-shadow duration-300 rounded-2xl bg-surface flex-1 border-2 border-accent/20 focus-within:border-accent/50">
+                            <span className="material-icons absolute left-5 top-1/2 -translate-y-1/2 text-accent/50 group-focus-within:text-accent transition-colors text-2xl">search</span>
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="Buscar producto, marca o escanear código..."
+                                autoFocus
+                                className="w-full bg-transparent border-none pl-14 pr-12 py-4 text-txt-primary font-bold text-base rounded-2xl outline-none placeholder:text-txt-dim/60"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface-highlight p-1.5 rounded-full text-txt-dim hover:bg-red-100 hover:text-red-500 transition-colors"
+                                >
+                                    <span className="material-icons text-sm">close</span>
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={scannerOpen ? closeCameraScanner : openCameraScanner}
+                            className={`px-5 rounded-2xl border-2 shadow-md flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${scannerOpen
+                                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                                    : 'bg-surface text-accent border-accent/20 hover:border-accent/50 hover:bg-accent/5'
+                                }`}
+                        >
+                            <span className="material-icons text-xl">{scannerOpen ? 'close' : 'qr_code_scanner'}</span>
+                            <span className="hidden sm:inline">{scannerOpen ? 'Cerrar' : 'Escanear'}</span>
+                        </button>
                     </div>
+
+                    {/* Camera Scanner Overlay */}
+                    {scannerOpen && (
+                        <div className="bg-surface rounded-2xl border-2 border-accent/30 overflow-hidden shadow-lg">
+                            <div className="p-3 bg-accent/5 flex items-center gap-2 border-b border-accent/10">
+                                <span className="material-icons text-accent animate-pulse">videocam</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-accent">Apuntá la cámara al código de barras</span>
+                            </div>
+                            <div id="barcode-reader" style={{ width: '100%' }}></div>
+                        </div>
+                    )}
                 </header>
 
                 {/* Table View (Desktop) */}

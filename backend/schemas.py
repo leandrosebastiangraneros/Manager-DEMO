@@ -48,6 +48,7 @@ class StockItemFormat(StockItemFormatBase):
 class StockItemBase(BaseModel):
     name: str
     brand: Optional[str] = None
+    barcode: Optional[str] = None
     is_pack: bool = False
     pack_size: float = 1.0
     cost_amount: float
@@ -75,6 +76,7 @@ class BatchStockItem(BaseModel):
     item_id: Optional[int] = None # Si es replenishment
     name: str
     brand: Optional[str] = None
+    barcode: Optional[str] = None
     is_pack: bool = False
     pack_size: float = 1.0
     cost_amount: float # Costo de la carga/lote

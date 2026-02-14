@@ -120,6 +120,13 @@ const Stock = () => {
                                             <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/20 rounded-xl text-xs outline-none focus:border-accent font-bold text-txt-primary disabled:opacity-50" value={stock.newItemName} onChange={e => stock.setNewItemName(e.target.value)} required disabled={!!stock.selectedExisting} />
                                         </div>
                                     </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-txt-primary uppercase tracking-widest block mb-1">
+                                            <span className="material-icons text-[11px] align-middle mr-0.5">qr_code</span>
+                                            Código de Barras
+                                        </label>
+                                        <input type="text" className="w-full p-2.5 bg-surface-highlight border border-panel-border/20 rounded-xl text-xs outline-none focus:border-accent font-bold text-txt-primary font-mono tracking-wider disabled:opacity-50" value={stock.newItemBarcode} onChange={e => stock.setNewItemBarcode(e.target.value)} placeholder="Escanear o ingresar manualmente" disabled={!!stock.selectedExisting} />
+                                    </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>

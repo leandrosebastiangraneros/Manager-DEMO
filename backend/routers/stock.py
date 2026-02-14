@@ -25,6 +25,19 @@ def read_stock():
     return res.data or []
 
 
+@router.get("/stock/barcode/{code}")
+def get_stock_by_barcode(code: str):
+    res = (
+        supabase.table("stock_items")
+        .select("*, formats:stock_item_formats(*)")
+        .eq("barcode", code)
+        .execute()
+    )
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Producto no encontrado con ese código de barras")
+    return res.data[0]
+
+
 @router.post("/stock", response_model=schemas.StockItem)
 def create_stock_item(item: schemas.StockItemCreate):
     cat_id = None
