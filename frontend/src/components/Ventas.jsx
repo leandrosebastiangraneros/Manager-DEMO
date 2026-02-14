@@ -63,11 +63,11 @@ const Ventas = () => {
     );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-32 h-full overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full overflow-hidden">
 
             {/* Left: Product Selection Area */}
-            <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
-                <header className="mb-6 flex-shrink-0">
+            <div className="lg:col-span-3 flex flex-col h-full min-h-0 overflow-hidden">
+                <header className="mb-4 flex-shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                         <div>
                             <h1 className="text-2xl font-sans font-extrabold text-txt-primary tracking-tight leading-none mb-1 uppercase">
@@ -132,7 +132,7 @@ const Ventas = () => {
                 </header>
 
                 {/* Table View (Desktop) */}
-                <div className="flex-1 bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col relative mb-4">
+                <div className="flex-1 bg-surface rounded-2xl border border-panel-border/10 shadow-sm flex flex-col min-h-0 overflow-hidden">
                     <div className="overflow-auto custom-scrollbar flex-1">
                         <table className="w-full text-left border-collapse hidden md:table">
                             <thead>
@@ -353,8 +353,8 @@ const Ventas = () => {
             </div>
 
             {/* Right: Cart/Summary Panel */}
-            <div className="lg:col-span-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col bg-surface rounded-t-[2rem] lg:rounded-[2rem] shadow-2xl overflow-hidden border border-panel-border/10 relative">
+            <div className="lg:col-span-1 flex flex-col h-full min-h-0">
+                <div className="flex-1 flex flex-col bg-surface lg:rounded-[2rem] shadow-2xl overflow-hidden border border-panel-border/10 min-h-0">
                     {/* Cart Header */}
                     <div className="p-6 bg-surface border-b border-panel-border/10 flex justify-between items-center z-10 shrink-0">
                         <div>
