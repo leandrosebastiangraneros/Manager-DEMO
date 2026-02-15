@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+
+from pydantic import BaseModel  # type: ignore
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -60,6 +61,19 @@ class StockItemBase(BaseModel):
 
 class StockItemCreate(StockItemBase):
     pass
+
+class StockItemUpdate(BaseModel):
+    name: Optional[str] = None
+    brand: Optional[str] = None
+    barcode: Optional[str] = None
+    is_pack: Optional[bool] = None
+    pack_size: Optional[float] = None
+    cost_amount: Optional[float] = None
+    initial_quantity: Optional[float] = None
+    selling_price: Optional[float] = None
+    pack_price: Optional[float] = None
+    category_id: Optional[int] = None
+    min_stock_alert: Optional[float] = None
 
 class StockItem(StockItemBase):
     id: int
