@@ -106,7 +106,7 @@ async def dashboard_stats():
         .select("*")
         .eq("category", "VENTA")
         .order("created_at", desc=True)
-        .limit(15)
+        .limit(3)
         .execute()
     )
 
