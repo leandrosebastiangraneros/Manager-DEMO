@@ -1,17 +1,21 @@
+/**
+ * Sidebar — Desktop navigation panel.
+ *
+ * Uses centralized ROUTES array and onNavigate callback from Layout.
+ */
 import React from 'react';
-import GlassContainer from './common/GlassContainer';
 
-const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen }) => {
-    // Intuitive labels
-    const menuItems = [
-        { id: 'inicio', label: 'Inicio', icon: 'dashboard' },
-        { id: 'caja', label: 'Caja y Ventas', icon: 'shopping_cart' },
-        { id: 'inventario', label: 'Inventario', icon: 'inventory_2' },
-        { id: 'gastos', label: 'Gastos y Reportes', icon: 'analytics' },
-        { id: 'movimientos', label: 'Movimientos', icon: 'history_toggle_off' },
-        { id: 'ajustes', label: 'Ajustes', icon: 'settings' },
-    ];
+// Full sidebar labels (more descriptive than mobile)
+const SIDEBAR_LABELS = {
+    'inicio': 'Inicio',
+    'caja': 'Caja y Ventas',
+    'inventario': 'Inventario',
+    'gastos': 'Gastos y Reportes',
+    'movimientos': 'Movimientos',
+    'ajustes': 'Ajustes',
+};
 
+const Sidebar = ({ activeTab, onNavigate, routes, isCollapsed, toggleCollapse }) => {
     return (
         <aside
             className={`
@@ -22,7 +26,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
             `}
         >
             <div className="h-full flex flex-col">
-                {/* Brand / Logo (Clean) */}
+                {/* Brand / Logo */}
                 <div className="p-8 mb-4 mt-2 flex justify-center">
                     <div className={`
                         flex flex-col items-center justify-center transition-all duration-500
@@ -41,10 +45,10 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
 
                 {/* Navigation */}
                 <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                    {menuItems.map((item) => (
+                    {routes.map((item) => (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id)}
+                            onClick={() => onNavigate(item.path)}
                             className={`
                                 w-full flex items-center gap-4 p-4 transition-all duration-200 group relative
                                 ${activeTab === item.id
@@ -52,23 +56,23 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                                     : 'text-txt-dim hover:text-txt-primary hover:bg-surface-highlight'}
                             `}
                         >
-                            <span className={`material-icons text-xl transition-transform duration-200`}>
+                            <span className="material-icons text-xl transition-transform duration-200">
                                 {item.icon}
                             </span>
                             {!isCollapsed && (
                                 <span className="font-sans font-bold text-xs tracking-wide uppercase whitespace-nowrap overflow-hidden">
-                                    {item.label}
+                                    {SIDEBAR_LABELS[item.id] || item.label}
                                 </span>
                             )}
                         </button>
                     ))}
                 </nav>
 
-                {/* Footer Actions */}
+                {/* Footer */}
                 <div className="p-4 border-t border-panel-border mt-auto">
                     {!isCollapsed && (
                         <div className="px-4 py-1 text-[8px] font-mono text-txt-dim uppercase opacity-40 mb-1">
-                            Build v1.1-MultiFormat
+                            Build v2.0-Async
                         </div>
                     )}
                     <button
@@ -82,7 +86,7 @@ const Sidebar = ({ activeTab, setActiveTab, isCollapsed, toggleCollapse, isOpen 
                     </button>
                 </div>
             </div>
-        </aside >
+        </aside>
     );
 };
 

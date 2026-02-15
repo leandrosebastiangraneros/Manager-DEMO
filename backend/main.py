@@ -1,74 +1,80 @@
 """
-NovaManager Commercial - API
-Modular FastAPI application with router-based architecture.
+NovaManager — FastAPI Application Entry Point.
+
+Sets up middleware (CORS, Auth), exception handling, router registration,
+and manages the async Supabase client lifecycle.
 """
-from contextlib import asynccontextmanager
+
 import os
 import traceback
-import logging
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv  # type: ignore
+from fastapi import FastAPI, Request  # type: ignore
+from fastapi.responses import JSONResponse  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 
-from supabase_client import supabase
+from supabase_client import supabase  # type: ignore
+from auth import ApiKeyMiddleware  # type: ignore
 
-# Routers
-from routers import health, categories, stock, sales, expenses, reports, admin
+load_dotenv()
 
-# Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+IS_VERCEL = os.getenv("VERCEL", "")
 
+# ─── Lifespan ────────────────────────────────────────────────────────────────
 
-# --- Lifespan (startup/shutdown) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle — close resources on shutdown."""
-    logger.info("NovaManager API starting up...")
+    """Open the Supabase client on startup, close on shutdown."""
+    await supabase.open()
     yield
-    logger.info("NovaManager API shutting down — closing Supabase client...")
-    supabase.close()
+    await supabase.close()
 
+# ─── App Factory ─────────────────────────────────────────────────────────────
 
-# --- App Factory ---
-root_path = "/api" if os.getenv("VERCEL") else ""
+root_path = "/api" if IS_VERCEL else ""
 
 app = FastAPI(
-    title="NovaManager Commercial - API",
+    title="NovaManager API",
+    version="2.0.0",
     root_path=root_path,
-    debug=os.getenv("DEBUG", "false").lower() == "true",
     lifespan=lifespan,
+    debug=DEBUG,
 )
 
+# ─── Middleware ───────────────────────────────────────────────────────────────
+
 # CORS
-ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False if "*" in ALLOWED_ORIGINS else True,
+    allow_origins=[o.strip() for o in origins],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Global Exception Handler
+# API Key Authentication
+app.add_middleware(ApiKeyMiddleware)
+
+# ─── Global Exception Handler ────────────────────────────────────────────────
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    error_msg = str(exc)
-    stack = traceback.format_exc()
-    logger.error(f"Global Error: {error_msg}\n{stack}")
+    tb = traceback.format_exc() if DEBUG else None
     return JSONResponse(
         status_code=500,
         content={
-            "detail": error_msg,
-            "type": type(exc).__name__,
-            "msg": "Ocurrió un error en el servidor. Revisa los detalles.",
-            "traceback": stack if app.debug else None,
+            "detail": str(exc),
+            "traceback": tb,
         },
     )
 
+# ─── Router Registration ─────────────────────────────────────────────────────
 
-# --- Register Routers ---
+from routers import health, categories, stock, sales, expenses, reports, admin  # type: ignore
+
 app.include_router(health.router)
 app.include_router(categories.router)
 app.include_router(stock.router)

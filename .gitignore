@@ -3,6 +3,7 @@
 # Python / Backend
 backend/__pycache__/
 backend/venv/
+venv/
 backend/.env
 backend/*.db
 backend/.pytest_cache/

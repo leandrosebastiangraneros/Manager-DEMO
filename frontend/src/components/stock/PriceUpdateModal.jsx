@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { API_URL } from '../../config';
+import { API_URL, authHeaders } from '../../config';
 import ConfirmModal from '../common/ConfirmModal';
 
 const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => {
@@ -16,7 +16,7 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
     // Fetch brands when modal opens
     useEffect(() => {
         if (isOpen) {
-            fetch(`${API_URL}/stock/brands`)
+            fetch(`${API_URL}/stock/brands`, { headers: authHeaders() })
                 .then(res => res.json())
                 .then(data => setBrands(data))
                 .catch(err => console.error("Error fetching brands:", err));
@@ -58,7 +58,7 @@ const PriceUpdateModal = ({ isOpen, onClose, categories, onUpdateComplete }) => 
 
             const res = await fetch(`${API_URL}/stock/bulk-update`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
 

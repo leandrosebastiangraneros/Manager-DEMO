@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useDialog } from '../context/DialogContext';
-import { API_URL } from '../config';
+import { API_URL, authHeaders } from '../config';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
+import { toast } from 'sonner';
 
 const Configuracion = () => {
     const [loading, setLoading] = useState(false);
     const [apiStatus, setApiStatus] = useState('CHECKING');
     const [latency, setLatency] = useState(0);
-    const { showAlert, showConfirm } = useDialog();
+    const { showConfirm } = useDialog();
 
     useEffect(() => {
         checkSystemHealth();
@@ -19,7 +20,7 @@ const Configuracion = () => {
     const checkSystemHealth = async () => {
         const start = Date.now();
         try {
-            await fetch(`${API_URL}/categories?type=INCOME`);
+            await fetch(`${API_URL}/categories?type=INCOME`, { headers: authHeaders() });
             const end = Date.now();
             setLatency(end - start);
             setApiStatus('ONLINE');
@@ -44,17 +45,17 @@ const Configuracion = () => {
         if (!secondConfirm) return;
 
         setLoading(true);
-        fetch(`${API_URL}/reset-db`, { method: 'POST' })
+        fetch(`${API_URL}/reset-db`, { method: 'POST', headers: authHeaders() })
             .then(res => res.json())
             .then(data => {
                 setLoading(false);
-                showAlert("Base de datos reiniciada. Recargando sistema...", "success");
+                toast.success("Base de datos reiniciada. Recargando sistema...");
                 setTimeout(() => window.location.reload(), 2000);
             })
             .catch(err => {
                 console.error("Error resetting:", err);
                 setLoading(false);
-                showAlert("Error al reiniciar la base de datos.", "error");
+                toast.error("Error al reiniciar la base de datos.");
             });
     };
 

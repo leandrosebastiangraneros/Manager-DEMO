@@ -1,66 +1,74 @@
-"""Expenses and finance endpoints."""
-from typing import List
-from datetime import date
+"""
+Expense and financial summary endpoints.
+"""
+
 import os
-import shutil
-import uuid
-import logging
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form  # type: ignore
+from supabase_client import supabase  # type: ignore
+from helpers import log_movement, UPLOAD_DIR, get_category_id  # type: ignore
 
-from supabase_client import supabase
-from helpers import log_movement, UPLOAD_DIR, ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE_MB
-import schemas
+router = APIRouter()
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(tags=["expenses"])
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 @router.get("/finances/summary")
-def get_finance_summary(month: int, year: int):
-    start_date = date(year, month, 1).isoformat()
-    end_date = (
-        date(year + 1, 1, 1).isoformat()
-        if month == 12
-        else date(year, month + 1, 1).isoformat()
-    )
+async def financial_summary(month: int, year: int):
+    """Get income/expense summary for a given month."""
+    month_start = f"{year}-{month:02d}-01"
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+    month_end = f"{next_year}-{next_month:02d}-01"
 
-    res = (
+    # Income
+    income_res = await (
         supabase.table("transactions")
-        .select("amount, type")
-        .gte("date", start_date)
-        .lt("date", end_date)
+        .select("amount")
+        .eq("type", "INCOME")
+        .gte("date", month_start)
+        .lt("date", month_end)
         .execute()
     )
-    txs = res.data or []
+    total_income = sum(t["amount"] for t in (income_res.data or []))
 
-    income = sum(t["amount"] for t in txs if t["type"] == "INCOME")
-    expense = sum(t["amount"] for t in txs if t["type"] == "EXPENSE")
+    # Expenses
+    expense_res = await (
+        supabase.table("transactions")
+        .select("amount")
+        .eq("type", "EXPENSE")
+        .gte("date", month_start)
+        .lt("date", month_end)
+        .execute()
+    )
+    total_expense = sum(t["amount"] for t in (expense_res.data or []))
 
     return {
-        "total_income": income,
-        "total_expense": expense,
-        "net_balance": income - expense,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_balance": total_income - total_expense,
     }
 
 
-@router.get("/expenses", response_model=List[schemas.ExpenseDocument])
-def read_expenses(month: int, year: int):
-    start_date = date(year, month, 1).isoformat()
-    end_date = (
-        date(year + 1, 1, 1).isoformat()
-        if month == 12
-        else date(year, month + 1, 1).isoformat()
-    )
-    res = (
+@router.get("/expenses")
+async def list_expenses(month: int, year: int):
+    """List expense documents for a given month."""
+    month_start = f"{year}-{month:02d}-01"
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+    month_end = f"{next_year}-{next_month:02d}-01"
+
+    res = await (
         supabase.table("expense_documents")
         .select("*")
-        .gte("date", start_date)
-        .lt("date", end_date)
+        .gte("date", month_start)
+        .lt("date", month_end)
+        .order("date", desc=True)
         .execute()
     )
-    return res.data or []
+    return res.data if res else []
 
 
 @router.post("/expenses/upload")
@@ -70,45 +78,47 @@ async def upload_expense(
     date: str = Form(...),
     file: UploadFile = File(...),
 ):
-    # Validate file extension
-    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename else ""
+    """Upload an expense document (PDF or image)."""
+    # Validate extension
+    ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Tipo de archivo no permitido: .{ext}. Permitidos: {', '.join(ALLOWED_EXTENSIONS)}",
-        )
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {ext}")
 
-    # Validate file size
-    contents = await file.read()
-    if len(contents) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El archivo excede el límite de {MAX_UPLOAD_SIZE_MB}MB",
-        )
-    await file.seek(0)
+    # Read and validate size
+    contents: bytes = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
 
     # Save file
-    file_id = str(uuid.uuid4())[:8]
-    safe_filename = f"{file_id}_{file.filename}"
-    filepath = os.path.join(UPLOAD_DIR, safe_filename)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{file.filename}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(contents)
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    doc_data = {
+    # Record in database
+    doc_res = await supabase.table("expense_documents").insert({
         "description": description,
         "amount": amount,
         "date": date,
-        "file_path": filepath,
-        "file_type": ext,
-    }
-    res = supabase.table("expense_documents").insert(doc_data).execute()
+        "file_path": f"uploads/{filename}",
+        "file_type": ext.lstrip("."),
+    }).execute()
 
-    log_movement(
-        "FINANZAS",
-        "GASTO",
-        f"Comprobante cargado: {description} - ${amount:,.2f}",
-        {"amount": amount, "file_id": file_id},
+    # Create expense transaction
+    expense_cat_id = await get_category_id("Gastos Fijos")
+    tx_res = await supabase.table("transactions").insert({
+        "amount": amount,
+        "description": description,
+        "type": "EXPENSE",
+        "category_id": expense_cat_id,
+    }).execute()
+
+    await log_movement(
+        "FINANZAS", "GASTO",
+        f"Gasto registrado: {description} — ${amount:,.2f}",
+        metadata={"amount": amount, "file": filename},
+        transaction_id=tx_res.data[0]["id"] if tx_res and tx_res.data else None,
     )
 
-    return res.data[0]
+    return {"status": "ok", "document": doc_res.data[0] if doc_res and doc_res.data else {}}

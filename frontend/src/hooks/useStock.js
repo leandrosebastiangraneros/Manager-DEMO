@@ -3,11 +3,12 @@
  * Extracted from Stock.jsx for separation of concerns.
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { API_URL } from '../config';
+import { toast } from 'sonner';
+import { API_URL, authHeaders } from '../config';
 import { useDialog } from '../context/DialogContext';
 
 export function useStock() {
-    const { showAlert } = useDialog();
+    const { showConfirm } = useDialog();
 
     // Core data
     const [items, setItems] = useState([]);
@@ -16,7 +17,6 @@ export function useStock() {
 
     // Modal visibility
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Edit form state
@@ -43,16 +43,13 @@ export function useStock() {
     const [replenishSearch, setReplenishSearch] = useState('');
     const [selectedExisting, setSelectedExisting] = useState(null);
 
-    // Sell form
-    const [sellPriceUnit, setSellPriceUnit] = useState('');
-    const [sellQuantity, setSellQuantity] = useState('1');
-    const [workDesc, setWorkDesc] = useState('');
+
 
     // ---------- Data Fetching ----------
 
     const fetchStock = useCallback(() => {
         setLoading(true);
-        fetch(`${API_URL}/stock`)
+        fetch(`${API_URL}/stock`, { headers: authHeaders() })
             .then(res => res.json())
             .then(data => {
                 setItems(Array.isArray(data) ? data : []);
@@ -66,7 +63,7 @@ export function useStock() {
     }, []);
 
     const fetchCategories = useCallback(() => {
-        fetch(`${API_URL}/categories`)
+        fetch(`${API_URL}/categories`, { headers: authHeaders() })
             .then(res => res.json())
             .then(data => setCategories(Array.isArray(data) ? data : []))
             .catch(err => console.error("Error categories:", err));
@@ -151,7 +148,7 @@ export function useStock() {
         const pSize = isPack ? (parseFloat(packSize) || 1) : 1;
 
         if (!newItemName || isNaN(costAmount) || isNaN(qtyToEnter)) {
-            showAlert("Completa los datos mínimos (Nombre, Costo, Cantidad)", "error");
+            toast.error("Completa los datos mínimos (Nombre, Costo, Cantidad)");
             return;
         }
 
@@ -171,7 +168,7 @@ export function useStock() {
 
         setDraftItems(prev => [...prev, draftItem]);
         resetForm();
-    }, [newItemName, newItemBrand, newItemBarcode, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, isPack, packSize, newItemCategoryId, selectedExisting, showAlert, resetForm]);
+    }, [newItemName, newItemBrand, newItemBarcode, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, isPack, packSize, newItemCategoryId, selectedExisting, resetForm]);
 
     const handleSaveBatch = useCallback(async () => {
         if (draftItems.length === 0) return;
@@ -179,23 +176,23 @@ export function useStock() {
         try {
             const res = await fetch(`${API_URL}/stock/batch`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({ items: draftItems })
             });
             if (res.ok) {
-                showAlert("Inventario actualizado con éxito", "success");
+                toast.success("Inventario actualizado con éxito");
                 setDraftItems([]);
                 fetchStock();
             } else {
                 const err = await res.json();
-                showAlert("Error: " + err.detail, "error");
+                toast.error("Error: " + err.detail);
             }
         } catch (err) {
-            showAlert("Error de conexión", "error");
+            toast.error("Error de conexión");
         } finally {
             setIsSavingBatch(false);
         }
-    }, [draftItems, fetchStock, showAlert]);
+    }, [draftItems, fetchStock]);
 
     const handleEditSubmit = useCallback(async (e) => {
         e.preventDefault();
@@ -216,62 +213,40 @@ export function useStock() {
 
             const res = await fetch(`${API_URL}/stock/${editingId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
 
             if (res.ok) {
-                showAlert("Producto actualizado con éxito", "success");
+                toast.success("Producto actualizado con éxito");
                 setIsAddModalOpen(false);
                 fetchStock();
             } else {
                 const err = await res.json();
-                showAlert("Error: " + (err.detail || "No se pudo actualizar"), "error");
+                toast.error("Error: " + (err.detail || "No se pudo actualizar"));
             }
         } catch (err) {
-            showAlert("Error crítico al actualizar", "error");
+            toast.error("Error crítico al actualizar");
         }
-    }, [editingId, newItemName, newItemBrand, newItemBarcode, isPack, packSize, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, newItemCategoryId, minStockAlert, fetchStock, showAlert]);
+    }, [editingId, newItemName, newItemBrand, newItemBarcode, isPack, packSize, newItemCost, newItemQuantity, newItemSellingPrice, newItemPackPrice, newItemCategoryId, minStockAlert, fetchStock]);
 
-    const handleDeleteClick = useCallback(async (item) => {
-        if (window.confirm(`¿Estás seguro de que deseas eliminar ${item.name}?`)) {
-            try {
-                const res = await fetch(`${API_URL}/stock/${item.id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    showAlert("Producto eliminado", "success");
-                    fetchStock();
+    const handleDeleteClick = useCallback((item) => {
+        showConfirm(
+            `¿Estás seguro de que deseas eliminar ${item.name}?`,
+            async () => {
+                try {
+                    const res = await fetch(`${API_URL}/stock/${item.id}`, { method: 'DELETE', headers: authHeaders() });
+                    if (res.ok) {
+                        toast.success("Producto eliminado");
+                        fetchStock();
+                    }
+                } catch (err) {
+                    toast.error("Error al eliminar");
                 }
-            } catch (err) {
-                showAlert("Error al eliminar", "error");
             }
-        }
-    }, [fetchStock, showAlert]);
+        );
+    }, [fetchStock, showConfirm]);
 
-    const handleSellSubmit = useCallback((e) => {
-        e.preventDefault();
-        const priceUnit = parseFloat(sellPriceUnit);
-        const qty = parseFloat(sellQuantity);
-        if (!workDesc || isNaN(priceUnit) || isNaN(qty)) {
-            showAlert("Completa todos los campos", "error");
-            return;
-        }
-
-        fetch(`${API_URL}/stock/${selectedItem.id}/sell`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sale_price_unit: priceUnit, quantity: qty, work_description: workDesc })
-        })
-            .then(res => {
-                if (!res.ok) throw new Error("Error en la venta");
-                return res.json();
-            })
-            .then(() => {
-                fetchStock();
-                setIsSellModalOpen(false);
-                showAlert("Venta registrada con éxito", "success");
-            })
-            .catch(err => showAlert(err.message, "error"));
-    }, [sellPriceUnit, sellQuantity, workDesc, selectedItem, fetchStock, showAlert]);
 
     const handleSelectExisting = useCallback((item) => {
         setSelectedExisting(item);
@@ -293,7 +268,6 @@ export function useStock() {
 
         // Modal state
         isAddModalOpen, setIsAddModalOpen,
-        isSellModalOpen, setIsSellModalOpen,
         selectedItem, setSelectedItem,
 
         // Edit form
@@ -319,18 +293,13 @@ export function useStock() {
         replenishSearch, setReplenishSearch,
         selectedExisting, setSelectedExisting,
 
-        // Sell form
-        sellPriceUnit, setSellPriceUnit,
-        sellQuantity, setSellQuantity,
-        workDesc, setWorkDesc,
-
         // Computed
         calculatedUnitCost, calculatedPackCost,
 
         // Handlers
         fetchStock, openEditModal, addToDraft,
         handleSaveBatch, handleEditSubmit,
-        handleDeleteClick, handleSellSubmit,
+        handleDeleteClick,
         handleSelectExisting, resetForm,
     };
 }

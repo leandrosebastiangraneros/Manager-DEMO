@@ -1,9 +1,15 @@
-import React, { Suspense, lazy, useState } from 'react';
+/**
+ * App.jsx — Main application with React Router.
+ *
+ * Uses BrowserRouter with lazy-loaded route components.
+ * Layout wraps all routes with sidebar navigation.
+ */
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { DialogProvider } from './context/DialogContext';
-import ErrorBoundary from './components/common/ErrorBoundary';
 
-// Lazy-loaded route components — only loaded when the tab is activated
+// Lazy-loaded page components
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const Ventas = lazy(() => import('./components/Ventas'));
 const Stock = lazy(() => import('./components/Stock'));
@@ -11,45 +17,30 @@ const Reportes = lazy(() => import('./components/Reportes'));
 const Historial = lazy(() => import('./components/Historial'));
 const Configuracion = lazy(() => import('./components/Configuracion'));
 
-// Loading fallback for lazy-loaded components
-const PageLoader = () => (
-  <div className="flex flex-col items-center justify-center h-[50vh] animate-pulse">
-    <span className="material-icons text-4xl mb-4 animate-spin text-accent">sync</span>
-    <div className="font-mono text-xs uppercase tracking-widest font-bold text-txt-primary">Cargando módulo...</div>
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-full">
+    <span className="material-icons text-4xl animate-spin text-txt-dim">autorenew</span>
   </div>
 );
 
 function App() {
-  const [activeTab, setActiveTab] = useState('caja');
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'inicio':
-        return <Dashboard />;
-      case 'caja':
-        return <Ventas />;
-      case 'inventario':
-        return <Stock />;
-      case 'gastos':
-        return <Reportes />;
-      case 'movimientos':
-        return <Historial />;
-      case 'ajustes':
-        return <Configuracion />;
-      default:
-        return <Ventas />;
-    }
-  };
-
   return (
     <DialogProvider>
-      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-        <ErrorBoundary>
-          <Suspense fallback={<PageLoader />}>
-            {renderContent()}
+      <BrowserRouter>
+        <Layout>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/ventas" element={<Ventas />} />
+              <Route path="/inventario" element={<Stock />} />
+              <Route path="/reportes" element={<Reportes />} />
+              <Route path="/movimientos" element={<Historial />} />
+              <Route path="/ajustes" element={<Configuracion />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Suspense>
-        </ErrorBoundary>
-      </Layout>
+        </Layout>
+      </BrowserRouter>
     </DialogProvider>
   );
 }

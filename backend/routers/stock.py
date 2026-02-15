@@ -1,361 +1,363 @@
-"""Stock management endpoints (inventory CRUD, batch, formats)."""
-from typing import List
-from datetime import datetime
-import logging
+"""
+Stock management endpoints.
 
-from fastapi import APIRouter, HTTPException
+Handles CRUD for stock items, batch additions, format management,
+brand fetching, and bulk price updates.
+"""
 
-from supabase_client import supabase
-from helpers import log_movement
-import schemas
+from fastapi import APIRouter, HTTPException  # type: ignore
+from supabase_client import supabase  # type: ignore
+from helpers import get_category_id, log_movement  # type: ignore
+import schemas  # type: ignore
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(tags=["stock"])
+router = APIRouter()
 
 
-@router.get("/stock", response_model=List[schemas.StockItem])
-def read_stock():
-    res = (
-        supabase.table("stock_items")
-        .select("*, formats:stock_item_formats(*)")
-        .order("name")
-        .execute()
+# ─── READ ─────────────────────────────────────────────────────────────────────
+
+@router.get("/stock")
+async def read_stock():
+    """Get all stock items with their formats embedded."""
+    res = await supabase.table("stock_items").select("*").order("name").execute()
+    items = res.data if res else []
+
+    if not items:
+        return items
+
+    # Batch-fetch all formats in ONE query instead of N+1
+    item_ids = [item["id"] for item in items]
+    fmt_res = await supabase.table("stock_item_formats").select("*").in_("stock_item_id", item_ids).execute()
+    all_formats = fmt_res.data if fmt_res else []
+
+    # Group formats by stock_item_id
+    formats_by_item: dict[int, list] = {}
+    for fmt in all_formats:
+        sid = fmt["stock_item_id"]
+        formats_by_item.setdefault(sid, []).append(fmt)
+
+    # Attach formats to each item
+    for item in items:
+        item["formats"] = formats_by_item.get(item["id"], [])
+
+    return items
+
+
+@router.get("/stock/brands")
+async def get_brands():
+    """Get distinct brand names from stock items."""
+    res = await supabase.table("stock_items").select("brand").execute()
+    if not res or not res.data:
+        return []
+    brands = sorted(set(item["brand"] for item in res.data if item.get("brand")))
+    return brands
+
+
+# ─── CREATE ───────────────────────────────────────────────────────────────────
+
+@router.post("/stock")
+async def create_stock_item(item: schemas.StockItemCreate):
+    """Create a single stock item."""
+    data = item.model_dump()
+
+    # Calculate unit cost
+    qty = data.get("initial_quantity", 1) or 1
+    pack_size = data.get("pack_size", 1) or 1
+    cost = data.get("cost_amount", 0) or 0
+    data["unit_cost"] = cost / (qty * pack_size) if qty * pack_size > 0 else 0
+    data["quantity"] = qty * pack_size
+    data["status"] = "AVAILABLE"
+
+    res = await supabase.table("stock_items").insert(data).execute()
+    if not res:
+        raise HTTPException(status_code=400, detail=f"Insert failed: {res.error}")
+
+    created = res.data[0]
+    await log_movement(
+        "STOCK", "ALTA",
+        f"Producto creado: {created['name']}",
+        metadata={"item_id": created["id"], "quantity": created["quantity"]},
+        stock_item_id=created["id"],
     )
-    return res.data or []
-
-
-@router.get("/stock/barcode/{code}")
-def get_stock_by_barcode(code: str):
-    res = (
-        supabase.table("stock_items")
-        .select("*, formats:stock_item_formats(*)")
-        .eq("barcode", code)
-        .execute()
-    )
-    if not res.data:
-        raise HTTPException(status_code=404, detail="Producto no encontrado con ese código de barras")
-    return res.data[0]
-
-
-@router.post("/stock", response_model=schemas.StockItem)
-def create_stock_item(item: schemas.StockItemCreate):
-    cat_id = None
-    try:
-        cat_res = (
-            supabase.table("categories")
-            .select("id")
-            .eq("name", "Compra de Mercadería")
-            .single()
-            .execute()
-        )
-        if cat_res.data:
-            cat_id = cat_res.data["id"]
-    except Exception as e:
-        logger.warning(f"Could not fetch expense category: {e}")
-
-    tx_data = {
-        "date": datetime.now().isoformat(),
-        "amount": item.cost_amount,
-        "description": f"Compra Stock: {item.name}",
-        "type": "EXPENSE",
-        "category_id": cat_id,
-    }
-    tx_res = supabase.table("transactions").insert(tx_data).execute()
-    purchase_tx_id = tx_res.data[0]["id"] if tx_res.data else None
-
-    stock_data = item.model_dump()
-    stock_data["purchase_tx_id"] = purchase_tx_id
-    stock_data["purchase_date"] = datetime.now().isoformat()
-    stock_data["quantity"] = stock_data["initial_quantity"]
-    stock_data["status"] = "AVAILABLE"
-    stock_data.pop("unit_cost", None)
-    if not stock_data.get("category_id") or stock_data.get("category_id") == 0:
-        stock_data["category_id"] = None
-
-    stock_res = supabase.table("stock_items").insert(stock_data).execute()
-    if not stock_res.data:
-        raise HTTPException(status_code=400, detail="Failed to create stock item")
-
-    log_movement(
-        "STOCK",
-        "ALTA",
-        f"Ingreso: {item.name}",
-        {"id": stock_res.data[0]["id"]},
-        product_id=stock_res.data[0]["id"],
-        tx_id=purchase_tx_id,
-    )
-    return stock_res.data[0]
+    return created
 
 
 @router.post("/stock/batch")
-def create_batch_stock(batch: schemas.BatchStockRequest):
-    cat_id = None
-    try:
-        cat_res = (
-            supabase.table("categories")
-            .select("id")
-            .eq("name", "Compra de Mercadería")
-            .single()
-            .execute()
-        )
-        if cat_res.data:
-            cat_id = cat_res.data["id"]
-    except Exception as e:
-        logger.warning(f"Could not fetch expense category: {e}")
+async def create_stock_batch(batch: schemas.BatchStockRequest):
+    """
+    Create or replenish multiple stock items in a single operation.
 
-    processed = []
-    for item in batch.items:
-        if item.item_id:
-            # --- REPLENISHMENT ---
-            res = (
-                supabase.table("stock_items")
-                .select("*")
-                .eq("id", item.item_id)
-                .single()
-                .execute()
-            )
-            if not res.data:
+    Each item can be new (no item_id) or a replenishment (with item_id).
+    """
+    results = []
+    purchase_cat_id = await get_category_id("Compra de Mercadería")
+
+    for item_data in batch.items:
+        d = item_data.model_dump()
+        pack_size = d.get("pack_size", 1) or 1
+        units = (d.get("quantity", 1) or 1) * pack_size
+        cost = d.get("cost_amount", 0) or 0
+        unit_cost = cost / units if units > 0 else 0
+
+        if d.get("item_id"):
+            # Replenishment — update existing item
+            existing_res = await supabase.table("stock_items").select("*").eq("id", d["item_id"]).single().execute()
+            if not existing_res or not existing_res.data:
+                results.append({"error": f"Item {d['item_id']} not found"})
                 continue
 
-            existing = res.data
-            add_qty = item.quantity * (item.pack_size if item.is_pack else 1)
-            new_total_qty = existing["quantity"] + add_qty
+            existing = existing_res.data
+            new_qty = existing["quantity"] + units
 
-            # Weighted Average Cost
-            current_unit_cost = existing.get("unit_cost") or 0
-            total_inventory_value = (
-                existing["quantity"] * current_unit_cost
-            ) + item.cost_amount
-            new_unit_cost = (
-                total_inventory_value / new_total_qty if new_total_qty > 0 else 0
+            update_data = {"quantity": new_qty, "unit_cost": unit_cost, "status": "AVAILABLE"}
+            if d.get("selling_price"):
+                update_data["selling_price"] = d["selling_price"]
+            if d.get("pack_price") is not None:
+                update_data["pack_price"] = d["pack_price"]
+
+            await supabase.table("stock_items").update(update_data).eq("id", d["item_id"]).execute()
+
+            # Log expense transaction
+            if cost > 0 and purchase_cat_id:
+                await supabase.table("transactions").insert({
+                    "amount": cost,
+                    "description": f"Reposición: {existing['name']}",
+                    "type": "EXPENSE",
+                    "category_id": purchase_cat_id,
+                }).execute()
+
+            await log_movement(
+                "STOCK", "REPOSICION",
+                f"Reposición: {existing['name']} (+{units} unidades)",
+                metadata={"item_id": d["item_id"], "added": units, "new_total": new_qty},
+                stock_item_id=d["item_id"],
             )
-
-            update_data = {"quantity": new_total_qty, "status": "AVAILABLE"}
-            if item.selling_price:
-                update_data["selling_price"] = item.selling_price
-
-            # Handle Pack Prices and Formats during replenishment
-            if item.is_pack:
-                if item.pack_size == existing.get("pack_size"):
-                    if item.pack_price:
-                        update_data["pack_price"] = item.pack_price
-                else:
-                    fmt_res = (
-                        supabase.table("stock_item_formats")
-                        .select("*")
-                        .eq("stock_item_id", item.item_id)
-                        .eq("pack_size", item.pack_size)
-                        .execute()
-                    )
-
-                    fmt_payload = {
-                        "stock_item_id": item.item_id,
-                        "pack_size": item.pack_size,
-                        "pack_price": item.pack_price
-                        or (
-                            item.selling_price * item.pack_size
-                            if item.selling_price
-                            else 0
-                        ),
-                        "label": f"Pack x{item.pack_size}",
-                    }
-
-                    if fmt_res.data:
-                        supabase.table("stock_item_formats").update(
-                            fmt_payload
-                        ).eq("id", fmt_res.data[0]["id"]).execute()
-                    else:
-                        supabase.table("stock_item_formats").insert(
-                            fmt_payload
-                        ).execute()
-
-            supabase.table("stock_items").update(update_data).eq(
-                "id", item.item_id
-            ).execute()
-
-            # Create Expense Transaction
-            tx_data = {
-                "date": datetime.now().isoformat(),
-                "amount": item.cost_amount,
-                "description": f"Reposición: {existing['name']}"
-                + (f" [{item.brand}]" if item.brand else ""),
-                "type": "EXPENSE",
-                "category_id": cat_id,
-            }
-            supabase.table("transactions").insert(tx_data).execute()
-
-            log_movement(
-                "STOCK",
-                "REPOSICION",
-                f"Reposición: {existing['name']} (+{add_qty} unidades)",
-                {"product_id": item.item_id, "added": add_qty},
-                product_id=item.item_id,
-            )
-            processed.append(
-                {"id": item.item_id, "name": existing["name"], "status": "replenished"}
-            )
-
+            results.append({"id": d["item_id"], "status": "replenished", "new_quantity": new_qty})
         else:
-            # --- NEW PRODUCT ---
-            tx_data = {
-                "date": datetime.now().isoformat(),
-                "amount": item.cost_amount,
-                "description": f"Compra Stock: {item.name}",
-                "type": "EXPENSE",
-                "category_id": cat_id,
+            # New item
+            new_item = {
+                "name": d["name"],
+                "brand": d.get("brand", ""),
+                "barcode": d.get("barcode"),
+                "is_pack": d.get("is_pack", False),
+                "pack_size": pack_size,
+                "cost_amount": cost,
+                "initial_quantity": d.get("quantity", 1),
+                "quantity": units,
+                "unit_cost": unit_cost,
+                "selling_price": d.get("selling_price", 0),
+                "pack_price": d.get("pack_price"),
+                "category_id": d.get("category_id"),
+                "status": "AVAILABLE",
             }
-            tx_res = supabase.table("transactions").insert(tx_data).execute()
-            purchase_tx_id = tx_res.data[0]["id"] if tx_res.data else None
+            insert_res = await supabase.table("stock_items").insert(new_item).execute()
+            if insert_res and insert_res.data:
+                created = insert_res.data[0]
 
-            stock_data = item.model_dump()
-            stock_data.pop("item_id", None)
-            stock_data["purchase_tx_id"] = purchase_tx_id
-            stock_data["purchase_date"] = datetime.now().isoformat()
-            total_initial = item.quantity * (item.pack_size if item.is_pack else 1)
-            stock_data["initial_quantity"] = total_initial
-            stock_data["quantity"] = total_initial
-            stock_data["status"] = "AVAILABLE"
+                # Log expense transaction
+                if cost > 0 and purchase_cat_id:
+                    await supabase.table("transactions").insert({
+                        "amount": cost,
+                        "description": f"Compra: {created['name']}",
+                        "type": "EXPENSE",
+                        "category_id": purchase_cat_id,
+                    }).execute()
 
-            formats = stock_data.pop("formats", [])
-            stock_res = supabase.table("stock_items").insert(stock_data).execute()
-            if stock_res.data:
-                new_item_id = stock_res.data[0]["id"]
-                for fmt in formats:
-                    fmt_data = (
-                        fmt.model_dump() if hasattr(fmt, "model_dump") else fmt
-                    )
-                    fmt_data["stock_item_id"] = new_item_id
-                    supabase.table("stock_item_formats").insert(fmt_data).execute()
-
-                log_movement(
-                    "STOCK",
-                    "ALTA",
-                    f"Ingreso (Batch): {item.name} ({total_initial} unidades)",
-                    {"product_id": new_item_id, "qty": total_initial},
-                    product_id=new_item_id,
-                    tx_id=purchase_tx_id,
+                await log_movement(
+                    "STOCK", "ALTA",
+                    f"Nuevo producto: {created['name']}",
+                    metadata={"item_id": created["id"], "quantity": units},
+                    stock_item_id=created["id"],
                 )
-                processed.append(
-                    {"id": new_item_id, "name": item.name, "status": "created"}
-                )
+                results.append({"id": created["id"], "status": "created"})
+            else:
+                results.append({"error": f"Failed to insert {d.get('name', '?')}"})
 
-    return {"status": "success", "processed": processed}
+    return results
 
 
-@router.put("/stock/{item_id}", response_model=schemas.StockItem)
-def update_stock_item(item_id: int, item: schemas.StockItemCreate):
-    data = item.model_dump()
-    data.pop("unit_cost", None)
-    if not data.get("category_id") or data.get("category_id") == 0:
-        data["category_id"] = None
+# ─── UPDATE ───────────────────────────────────────────────────────────────────
 
-    res = supabase.table("stock_items").update(data).eq("id", item_id).execute()
-    return res.data[0]
+@router.put("/stock/{item_id}")
+async def update_stock_item(item_id: int, item: schemas.StockItemUpdate):
+    """Update a stock item by ID."""
+    # Verify exists
+    check = await supabase.table("stock_items").select("id").eq("id", item_id).single().execute()
+    if not check or not check.data:
+        raise HTTPException(status_code=404, detail="Item not found")
 
+    data = item.model_dump(exclude_none=True)
+
+    # Recalculate unit_cost if cost or quantity changed
+    if "cost_amount" in data or "initial_quantity" in data:
+        cost = data.get("cost_amount", 0) or 0
+        qty = data.get("initial_quantity", 1) or 1
+        pack_size = data.get("pack_size", 1) or 1
+        data["unit_cost"] = cost / (qty * pack_size) if qty * pack_size > 0 else 0
+        data["quantity"] = qty * pack_size
+
+    res = await supabase.table("stock_items").update(data).eq("id", item_id).execute()
+    if not res:
+        raise HTTPException(status_code=400, detail=f"Update failed: {res.error}")
+
+    await log_movement(
+        "STOCK", "EDICION",
+        f"Producto actualizado (ID: {item_id})",
+        metadata={"item_id": item_id, "changes": list(data.keys())},
+        stock_item_id=item_id,
+    )
+    return res.data[0] if res.data else {}
+
+
+# ─── DELETE ───────────────────────────────────────────────────────────────────
 
 @router.delete("/stock/{item_id}")
-def delete_stock_item(item_id: int):
-    check = supabase.table("stock_items").select("id").eq("id", item_id).execute()
-    if not check.data:
-        raise HTTPException(
-            status_code=404, detail=f"Producto {item_id} no encontrado"
-        )
-    supabase.table("stock_items").delete().eq("id", item_id).execute()
-    log_movement(
-        "STOCK", "BAJA", f"Producto eliminado (ID: {item_id})", product_id=item_id
+async def delete_stock_item(item_id: int):
+    """Delete a stock item and its formats."""
+    check = await supabase.table("stock_items").select("id, name").eq("id", item_id).single().execute()
+    if not check or not check.data:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    name = check.data.get("name", "?")
+
+    # Delete associated formats first
+    await supabase.table("stock_item_formats").delete().eq("stock_item_id", item_id).execute()
+    # Delete item
+    await supabase.table("stock_items").delete().eq("id", item_id).execute()
+
+    await log_movement(
+        "STOCK", "BAJA",
+        f"Producto eliminado: {name}",
+        metadata={"item_id": item_id},
+        stock_item_id=item_id,
     )
     return {"status": "deleted", "id": item_id}
 
 
-# --- STOCK FORMATS ---
-@router.post("/stock/formats", response_model=schemas.StockItemFormat)
-def create_stock_format(format: schemas.StockItemFormatCreate):
-    res = (
-        supabase.table("stock_item_formats").insert(format.model_dump()).execute()
+# ─── SELL (Quick sell from stock page) ────────────────────────────────────────
+
+@router.put("/stock/{item_id}/sell")
+async def sell_stock_item(item_id: int, sale: schemas.SellItem):
+    """Quick sell: deduct stock and create an income transaction."""
+    item_res = await supabase.table("stock_items").select("*").eq("id", item_id).single().execute()
+    if not item_res or not item_res.data:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    item = item_res.data
+    if item["quantity"] < sale.quantity:
+        raise HTTPException(status_code=400, detail="Stock insuficiente")
+
+    new_qty = item["quantity"] - sale.quantity
+    new_status = "DEPLETED" if new_qty == 0 else "AVAILABLE"
+
+    await supabase.table("stock_items").update({
+        "quantity": new_qty,
+        "status": new_status,
+    }).eq("id", item_id).execute()
+
+    # Create income transaction
+    total = sale.quantity * (sale.price or item["selling_price"] or 0)
+    sale_cat_id = await get_category_id("Venta de Bebidas")
+
+    tx_res = await supabase.table("transactions").insert({
+        "amount": total,
+        "description": f"Venta: {item['name']} x{sale.quantity}",
+        "type": "INCOME",
+        "category_id": sale_cat_id,
+    }).execute()
+
+    await log_movement(
+        "VENTA", "VENTA",
+        f"Venta rápida: {item['name']} x{sale.quantity}",
+        metadata={"item_id": item_id, "quantity": sale.quantity, "total": total},
+        stock_item_id=item_id,
+        transaction_id=tx_res.data[0]["id"] if tx_res and tx_res.data else None,
     )
-    if not res.data:
-        raise HTTPException(status_code=400, detail="Failed to create format")
-    return res.data[0]
+
+    return {"status": "sold", "remaining": new_qty}
+
+
+# ─── FORMATS ──────────────────────────────────────────────────────────────────
+
+@router.post("/stock/formats")
+async def create_format(fmt: schemas.FormatCreate):
+    """Add a pack format to a stock item."""
+    res = await supabase.table("stock_item_formats").insert(fmt.model_dump()).execute()
+    if not res:
+        raise HTTPException(status_code=400, detail=f"Failed: {res.error}")
+    return res.data[0] if res.data else {}
 
 
 @router.delete("/stock/formats/{format_id}")
-def delete_stock_format(format_id: int):
-    supabase.table("stock_item_formats").delete().eq("id", format_id).execute()
-    return {"status": "deleted"}
+async def delete_format(format_id: int):
+    """Delete a pack format."""
+    await supabase.table("stock_item_formats").delete().eq("id", format_id).execute()
+    return {"status": "deleted", "id": format_id}
 
-@router.get("/stock/brands")
-def get_brands():
-    """Fetch distinct brands for filtering."""
-    res = supabase.table("stock_items").select("brand").execute()
-    if not res.data:
-        return []
-    # Extract unique brands, ignore None/Empty
-    brands = sorted(list(set(item["brand"] for item in res.data if item.get("brand"))))
-    return brands
+
+# ─── BULK UPDATE ──────────────────────────────────────────────────────────────
 
 @router.post("/stock/bulk-update")
-def bulk_update_prices(request: schemas.BulkUpdateRequest):
+async def bulk_update_prices(request: schemas.BulkUpdateRequest):
     """
-    Update prices (cost/selling/pack) for multiple items based on filters.
-    percentage: positive for increase, negative for discount.
+    Bulk update prices and costs by percentage for filtered items.
+    Applies to both stock_items and their associated stock_item_formats.
     """
-    try:
-        # Build query
-        query = supabase.table("stock_items").select("*")
-        
-        if request.category_id:
-            query = query.eq("category_id", request.category_id)
-        if request.brand and request.brand.strip():
-            query = query.ilike("brand", f"%{request.brand}%")
-            
-        items = query.execute().data
-        
-        if not items:
-            return {"status": "no_items", "count": 0, "message": "No se encontraron productos con los filtros seleccionados."}
-        
-        updated_count = 0
-        factor = 1 + (request.percentage / 100.0)
-        
-        for item in items:
-            updates = {}
-            
-            # Update Unit Cost
-            if request.target_field in ["cost", "both"]:
-                 updates["unit_cost"] = (item.get("unit_cost") or 0) * factor
-                 # Usually cost_amount tracks total historical cost, but for future ref we might update unit_cost
-            
-            # Update Selling Price
-            if request.target_field in ["price", "both"]:
-                if item.get("selling_price"):
-                    updates["selling_price"] = item["selling_price"] * factor
-                
-                if item.get("pack_price"):
-                    updates["pack_price"] = item["pack_price"] * factor
-            
-            if updates:
-                supabase.table("stock_items").update(updates).eq("id", item["id"]).execute()
-                updated_count += 1
-                
-                # Update formats if they exist
-                if request.target_field in ["price", "both"]:
-                    f_res = supabase.table("stock_item_formats").select("*").eq("stock_item_id", item["id"]).execute()
-                    formats = f_res.data
-                    if formats:
-                        for fmt in formats:
-                            new_p = (fmt.get("pack_price") or 0) * factor
-                            supabase.table("stock_item_formats").update({"pack_price": new_p}).eq("id", fmt["id"]).execute()
+    query = supabase.table("stock_items").select("*")
 
-        # Log movement
-        log_movement(
-            "STOCK",
-            "UPDATE_PRICE",
-            f"Actualización masiva: {request.percentage}% en {request.target_field} ({updated_count} items). Filtros: Cat={request.category_id}, Brand={request.brand}",
-            {"count": updated_count, "percentage": request.percentage, "target": request.target_field}
-        )
+    if request.category_id:
+        query = query.eq("category_id", request.category_id)
+    if request.brand and request.brand.strip():
+        query = query.ilike("brand", f"%{request.brand}%")
 
-        return {"status": "success", "count": updated_count, "message": f"Se actualizaron {updated_count} productos correctamente."}
+    items_res = await query.execute()
+    items = items_res.data if items_res else []
 
-    except Exception as e:
-        logger.error(f"Error en bulk update: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    if not items:
+        raise HTTPException(status_code=404, detail="No items match the filter")
+
+    multiplier = 1 + (request.percentage / 100)
+    updated_count = 0
+
+    # Batch-fetch all formats for these items (N+1 fix)
+    item_ids = [item["id"] for item in items]
+    fmt_res = await supabase.table("stock_item_formats").select("*").in_("stock_item_id", item_ids).execute()
+    all_formats = fmt_res.data if fmt_res else []
+
+    formats_by_item: dict[int, list] = {}
+    for fmt in all_formats:
+        formats_by_item.setdefault(fmt["stock_item_id"], []).append(fmt)
+
+    for item in items:
+        new_selling = round((item.get("selling_price") or 0) * multiplier, 2)
+        new_cost = round((item.get("unit_cost") or 0) * multiplier, 2)
+        new_pack_price = round((item.get("pack_price") or 0) * multiplier, 2) if item.get("pack_price") else None
+
+        update_data = {
+            "selling_price": new_selling,
+            "unit_cost": new_cost,
+        }
+        if new_pack_price is not None:
+            update_data["pack_price"] = new_pack_price
+
+        await supabase.table("stock_items").update(update_data).eq("id", item["id"]).execute()
+        updated_count += 1
+
+        # Update formats for this item
+        for fmt in formats_by_item.get(item["id"], []):  # type: ignore
+            new_fmt_price = round((fmt.get("pack_price") or 0) * multiplier, 2)
+            await supabase.table("stock_item_formats").update(
+                {"pack_price": new_fmt_price}
+            ).eq("id", fmt["id"]).execute()
+
+    await log_movement(
+        "STOCK", "ACTUALIZACION_MASIVA",
+        f"Actualización masiva de precios: {request.percentage:+.1f}% a {updated_count} productos",
+        metadata={
+            "percentage": request.percentage,
+            "category_id": request.category_id,
+            "brand": request.brand,
+            "items_updated": updated_count,
+        },
+    )
+
+    return {"status": "ok", "updated": updated_count}

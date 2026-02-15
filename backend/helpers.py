@@ -1,43 +1,71 @@
-"""Shared helpers and utilities for all routers."""
-from typing import Optional, Dict
+"""
+Helper utilities — logging movements and upload config.
+"""
+
 import os
-import logging
+import shutil
+from datetime import datetime
+from typing import Any
+from fastapi import UploadFile, HTTPException  # type: ignore
+from supabase_client import supabase  # type: ignore
 
-from supabase_client import supabase
+# Upload directory (Vercel uses /tmp, local uses ./uploads)
+IS_VERCEL = os.getenv("VERCEL", "")
+UPLOAD_DIR = "/tmp/uploads" if IS_VERCEL else os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-logger = logging.getLogger(__name__)
+# ─── In-memory category cache ────────────────────────────────────────────────
 
-# Upload directory
-UPLOAD_DIR = "/tmp/uploads" if os.getenv("VERCEL") else "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-
-# Allowed file types and max size for expense uploads
-ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "webp"}
-MAX_UPLOAD_SIZE_MB = 10
+_category_cache: dict[str, int] = {}
 
 
-def log_movement(
+async def get_category_id(name: str) -> int | None:
+    """
+    Get category ID by name, with in-memory caching.
+    Returns None if category not found.
+    """
+    if name in _category_cache:
+        return _category_cache[name]
+
+    res = await supabase.table("categories").select("id").eq("name", name).single().execute()
+    if res and res.data:
+        _category_cache[name] = res.data["id"]
+        return res.data["id"]
+    return None
+
+
+# ─── Movement Logging ────────────────────────────────────────────────────────
+
+async def log_movement(
     category: str,
     action: str,
     description: str,
-    metadata: Optional[Dict] = None,
-    product_id: int = None,
-    tx_id: int = None,
-    sale_id: int = None,
+    metadata: dict | None = None,
+    stock_item_id: int | None = None,
+    transaction_id: int | None = None,
+    sale_id: int | None = None,
 ):
-    """Insert an activity record into app_movements."""
-    metadata = metadata or {}
+    """
+    Log an application movement to the app_movements table.
+
+    Categories: STOCK, VENTA, FINANZAS, SISTEMA
+    Actions: ALTA, VENTA, VENTA_LOTE, REPORTE, GASTO, CONFIG, etc.
+    """
     try:
-        data = {
+        payload: dict[str, Any] = {
             "category": category,
             "action": action,
             "description": description,
-            "metadata": metadata,
-            "stock_item_id": product_id,
-            "transaction_id": tx_id,
-            "sale_id": sale_id,
+            "metadata": metadata or {},
         }
-        supabase.table("app_movements").insert(data).execute()
+        if stock_item_id:
+            payload["stock_item_id"] = stock_item_id
+        if transaction_id:
+            payload["transaction_id"] = transaction_id
+        if sale_id:
+            payload["sale_id"] = sale_id
+
+        await supabase.table("app_movements").insert(payload).execute()
     except Exception as e:
-        logger.error(f"Failed to log movement: {e}")
+        # Don't let logging failures break the main operation
+        print(f"[log_movement] Warning: {e}")

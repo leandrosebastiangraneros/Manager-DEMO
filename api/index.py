@@ -40,7 +40,7 @@ async def health_check():
             # We can't easily call backend's health check object directly strictly speaking
             # without simulating a request, but we can check if it exists
             return status
-        except:
+        except Exception:
             pass
             
     return status

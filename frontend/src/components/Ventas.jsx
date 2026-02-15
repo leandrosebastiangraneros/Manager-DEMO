@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { API_URL } from '../config';
-import { useDialog } from '../context/DialogContext';
+import { API_URL, authHeaders } from '../config';
 import { formatMoney } from '../utils/formatters';
 import { useCart } from '../hooks/useCart';
 import GlassContainer from './common/GlassContainer';
@@ -9,8 +8,8 @@ import Button from './common/Button';
 import { toast } from 'sonner';
 
 const Ventas = () => {
-    const { showAlert } = useDialog();
     const [products, setProducts] = useState([]);
+
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -31,8 +30,8 @@ const Ventas = () => {
         setLoading(true);
         try {
             const [prodRes, catRes] = await Promise.all([
-                fetch(`${API_URL}/stock`),
-                fetch(`${API_URL}/categories`)
+                fetch(`${API_URL}/stock`, { headers: authHeaders() }),
+                fetch(`${API_URL}/categories`, { headers: authHeaders() })
             ]);
             const prodsData = await prodRes.json();
             const catsData = await catRes.json();

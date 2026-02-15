@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDialog } from '../context/DialogContext';
-import { API_URL } from '../config';
+import { API_URL, authHeaders } from '../config';
+import { formatDate } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
 import { toast } from 'sonner';
@@ -10,12 +10,11 @@ const Historial = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL'); // ALL, STOCK, VENTA, FINANZAS, SISTEMA
 
-    const { showAlert, showConfirm } = useDialog();
 
     const fetchMovements = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/movements?limit=100`);
+            const res = await fetch(`${API_URL}/movements?limit=100`, { headers: authHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 setMovements(Array.isArray(data) ? data : []);
@@ -34,16 +33,7 @@ const Historial = () => {
         fetchMovements();
     }, []);
 
-    const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        return date.toLocaleString('es-AR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+
 
     const getCategoryStyles = (category) => {
         switch (category) {

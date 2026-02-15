@@ -1,31 +1,26 @@
 """Health check endpoints."""
-from fastapi import APIRouter
 
-from supabase_client import supabase
+from fastapi import APIRouter  # type: ignore
+from supabase_client import supabase  # type: ignore
 
-router = APIRouter(tags=["health"])
+router = APIRouter()
 
 
-@router.get("/api/ping")
 @router.get("/ping")
-def ping():
-    return {"status": "pong", "message": "Backend is reachable (Supabase Mode)!"}
+async def ping():
+    return {"status": "pong"}
 
 
 @router.get("/health")
-def health_check():
-    if not supabase or not supabase.initialized:
-        return {
-            "status": "ERROR",
-            "db_connection": "NOT_CONFIGURED",
-            "detail": "Supabase credentials missing",
-        }
+async def health_check():
+    """Health check with database connectivity test."""
     try:
-        supabase.table("categories").select("id").limit(1).execute()
-        return {
-            "status": "ONLINE",
-            "db_connection": "SUCCESS",
-            "mode": "Supabase Client (HTTPX Lite)",
-        }
+        res = await supabase.table("categories").select("id").limit(1).execute()
+        db_status = "connected" if res else "error"
     except Exception as e:
-        return {"status": "ERROR", "db_connection": "FAILED", "detail": str(e)}
+        db_status = f"error: {e}"
+
+    return {
+        "status": "healthy",
+        "database": db_status,
+    }

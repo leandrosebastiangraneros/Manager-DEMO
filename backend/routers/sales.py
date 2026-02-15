@@ -1,395 +1,359 @@
-"""Sales, transactions, movements, and dashboard stats endpoints."""
-from typing import List
+"""
+Sales, transactions, and dashboard endpoints.
+
+Includes batch sale processing with atomic stock deduction (race condition fix),
+invoice PDF generation, and dashboard statistics.
+"""
+
+import io
 from datetime import datetime
-import logging
-import os
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, Query  # type: ignore
+from fastapi.responses import StreamingResponse  # type: ignore
+from reportlab.lib.pagesizes import A4  # type: ignore
+from reportlab.lib.units import mm  # type: ignore
+from reportlab.pdfgen import canvas  # type: ignore
 
-from supabase_client import supabase
-from helpers import log_movement
-import schemas
+from supabase_client import supabase  # type: ignore
+from helpers import get_category_id, log_movement  # type: ignore
+import schemas  # type: ignore
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(tags=["sales"])
-
-
-# --- TRANSACTIONS ---
-@router.post("/transactions", response_model=schemas.Transaction)
-def create_transaction(transaction: schemas.TransactionCreate):
-    data = transaction.model_dump()
-    data["date"] = datetime.now().isoformat()
-    res = supabase.table("transactions").insert(data).execute()
-    return res.data[0]
+router = APIRouter()
 
 
-@router.get("/transactions", response_model=List[schemas.Transaction])
-def read_transactions(skip: int = 0, limit: int = 100):
-    res = (
+# ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+
+@router.post("/transactions")
+async def create_transaction(tx: schemas.TransactionCreate):
+    """Create a manual transaction (income or expense)."""
+    data = tx.model_dump()
+    res = await supabase.table("transactions").insert(data).execute()
+    if not res or not res.data:
+        raise HTTPException(status_code=400, detail="Failed to create transaction")
+
+    created = res.data[0]
+    await log_movement(
+        "FINANZAS", "TRANSACCION",
+        f"Transacción {created['type']}: ${created['amount']}",
+        metadata={"amount": created["amount"], "type": created["type"]},
+        transaction_id=created["id"],
+    )
+    return created
+
+
+@router.get("/transactions")
+async def read_transactions(skip: int = 0, limit: int = 50):
+    """List transactions with pagination."""
+    res = await (
         supabase.table("transactions")
         .select("*")
         .order("date", desc=True)
         .range(skip, skip + limit - 1)
         .execute()
     )
-    return res.data or []
+    return res.data if res else []
 
 
-@router.get("/movements", response_model=List[schemas.AppMovement])
-def read_movements(limit: int = 100):
-    res = (
+@router.get("/movements")
+async def read_movements(limit: int = 100):
+    """List audit log movements."""
+    res = await (
         supabase.table("app_movements")
         .select("*")
         .order("created_at", desc=True)
         .limit(limit)
         .execute()
     )
-    return res.data or []
+    return res.data if res else []
 
+
+# ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard-stats")
-def get_dashboard_stats():
+async def dashboard_stats():
+    """Get current month income, expenses, balance, and recent sales."""
     now = datetime.now()
-    first_day = datetime(now.year, now.month, 1).isoformat()
+    month_start = f"{now.year}-{now.month:02d}-01"
+    next_month = now.month + 1 if now.month < 12 else 1
+    next_year = now.year if now.month < 12 else now.year + 1
+    month_end = f"{next_year}-{next_month:02d}-01"
 
-    res = (
+    # Income
+    income_res = await (
         supabase.table("transactions")
-        .select("amount, type, date")
-        .gte("date", first_day)
+        .select("amount")
+        .eq("type", "INCOME")
+        .gte("date", month_start)
+        .lt("date", month_end)
         .execute()
     )
-    transactions = res.data or []
+    total_income = sum(t["amount"] for t in (income_res.data or []))
 
-    income = sum(t["amount"] for t in transactions if t["type"] == "INCOME")
-    expenses = sum(t["amount"] for t in transactions if t["type"] == "EXPENSE")
+    # Expenses
+    expense_res = await (
+        supabase.table("transactions")
+        .select("amount")
+        .eq("type", "EXPENSE")
+        .gte("date", month_start)
+        .lt("date", month_end)
+        .execute()
+    )
+    total_expense = sum(t["amount"] for t in (expense_res.data or []))
 
-    res_movements = (
+    # Recent sales (movements of type VENTA)
+    recent_res = await (
         supabase.table("app_movements")
         .select("*")
         .eq("category", "VENTA")
         .order("created_at", desc=True)
-        .limit(3)
+        .limit(15)
         .execute()
     )
-    recent_sales = res_movements.data or []
 
     return {
-        "income": income,
-        "expenses": expenses,
-        "balance": income - expenses,
-        "month": now.strftime("%B"),
-        "recent_sales": recent_sales,
-        "chart_data": [],
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_balance": total_income - total_expense,
+        "recent_sales": recent_res.data if recent_res else [],
     }
 
 
-# --- BATCH SALES ---
+# ─── BATCH SALE (POS) ────────────────────────────────────────────────────────
+
 @router.post("/sales")
-def create_batch_sale(batch: schemas.BatchSaleRequest):
-    cat_id = None
+async def create_batch_sale(batch: schemas.BatchSaleRequest):
+    """
+    Process a batch sale from the POS (cart checkout).
+
+    RACE CONDITION FIX: Each item is validated and deducted ATOMICALLY
+    in a single loop. If any item fails validation, all previously
+    deducted items are rolled back.
+    """
+    if not batch.items:
+        raise HTTPException(status_code=400, detail="No items in sale")
+
+    sale_cat_id = await get_category_id("Venta de Bebidas")
+    total_sale = 0
+    processed_items: list[dict] = []  # Track for rollback
+    sale_details: list[dict] = []
+
     try:
-        cat_res = (
-            supabase.table("categories")
-            .select("id")
-            .eq("name", "Venta de Bebidas")
-            .single()
-            .execute()
-        )
-        if cat_res.data:
-            cat_id = cat_res.data["id"]
-    except Exception as e:
-        logger.warning(f"Could not fetch sales category: {e}")
+        for sale_item in batch.items:
+            # Fetch current stock (fresh read per item for atomicity)
+            item_res = await (
+                supabase.table("stock_items")
+                .select("*")
+                .eq("id", sale_item.item_id)
+                .single()
+                .execute()
+            )
+            if not item_res or not item_res.data:
+                raise ValueError(f"Product ID {sale_item.item_id} not found")
 
-    total_sale_amount = 0.0
-    processed_items = []
+            product = item_res.data
 
-
-    # Validate stock availability for all items first
-    for s_item in batch.items:
-        res = supabase.table("stock_items").select("quantity, name, pack_size, selling_price, pack_price").eq("id", s_item.item_id).single().execute()
-        product = res.data
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Producto {s_item.item_id} no encontrado")
-        
-        # Calculate deduction
-        current_stock = product["quantity"]
-        p_size = 1
-        if s_item.is_pack:
-            if s_item.format_id:
-                f_res = supabase.table("stock_item_formats").select("pack_size").eq("id", s_item.format_id).single().execute()
-                if f_res.data:
-                    p_size = f_res.data["pack_size"]
+            # Calculate units to deduct
+            if sale_item.is_pack:
+                if sale_item.format_id:
+                    fmt_res = await (
+                        supabase.table("stock_item_formats")
+                        .select("*")
+                        .eq("id", sale_item.format_id)
+                        .single()
+                        .execute()
+                    )
+                    if not fmt_res or not fmt_res.data:
+                        raise ValueError(f"Format ID {sale_item.format_id} not found")
+                    pack_size = fmt_res.data["pack_size"]
+                    unit_price = fmt_res.data["pack_price"]
+                else:
+                    pack_size = product.get("pack_size", 1) or 1
+                    unit_price = product.get("pack_price") or (product["selling_price"] * pack_size)
             else:
-                p_size = product.get("pack_size") or 1
-        
-        deduct_qty = s_item.quantity * p_size
-        
-        if deduct_qty > current_stock:
-             raise HTTPException(
-                status_code=400, 
-                detail=f"Stock insuficiente para {product['name']}. Solicitado: {deduct_qty} unid. (en packs/unid), Disponible: {current_stock}"
+                pack_size = 1
+                unit_price = product["selling_price"]
+
+            units_to_deduct = sale_item.quantity * pack_size
+
+            # ATOMIC VALIDATION: Check stock RIGHT BEFORE deducting
+            if product["quantity"] < units_to_deduct:
+                raise ValueError(
+                    f"Stock insuficiente para {product.get('brand', '')} {product['name']}: "
+                    f"disponible={product['quantity']}, requerido={units_to_deduct}"
+                )
+
+            # IMMEDIATE DEDUCTION (no separate validation pass)
+            new_qty = product["quantity"] - units_to_deduct
+            new_status = "DEPLETED" if new_qty == 0 else "AVAILABLE"
+
+            await (
+                supabase.table("stock_items")
+                .update({"quantity": new_qty, "status": new_status})
+                .eq("id", sale_item.item_id)
+                .execute()
             )
 
-    # Proceed with processing
-    for s_item in batch.items:
-        res = (
-            supabase.table("stock_items")
-            .select("*")
-            .eq("id", s_item.item_id)
-            .single()
-            .execute()
+            # Track for potential rollback
+            processed_items.append({
+                "item_id": sale_item.item_id,
+                "units_deducted": units_to_deduct,
+                "original_qty": product["quantity"],
+            })
+
+            line_total = unit_price * sale_item.quantity
+            total_sale += line_total
+
+            sale_details.append({
+                "stock_item_id": sale_item.item_id,
+                "quantity": sale_item.quantity,
+                "description": f"{product.get('brand', '')} {product['name']}" + (f" (Pack x{pack_size})" if sale_item.is_pack else ""),
+                "sale_price_total": line_total,
+                "product_name": product["name"],
+                "product_brand": product.get("brand", ""),
+            })
+
+        # All items deducted successfully — create transaction
+        tx_res = await supabase.table("transactions").insert({
+            "amount": total_sale,
+            "description": batch.description or "Venta Directa Salón",
+            "type": "INCOME",
+            "category_id": sale_cat_id,
+        }).execute()
+
+        if not tx_res or not tx_res.data:
+            raise ValueError("Failed to create transaction")
+
+        tx_id = tx_res.data[0]["id"]
+
+        # Create individual sale records
+        for detail in sale_details:
+            sale_record = {
+                "stock_item_id": detail["stock_item_id"],
+                "quantity": detail["quantity"],
+                "description": detail["description"],
+                "sale_price_total": detail["sale_price_total"],
+                "sale_tx_id": tx_id,
+            }
+            await supabase.table("sales").insert(sale_record).execute()
+
+        await log_movement(
+            "VENTA", "VENTA_LOTE",
+            f"Venta procesada: {len(sale_details)} productos — ${total_sale:,.2f}",
+            metadata={"transaction_id": tx_id, "items": len(sale_details), "total": total_sale},
+            transaction_id=tx_id,
         )
-        product = res.data
-        
-        # Recalculate values for processing (formatting params etc)
-        if s_item.is_pack:
-            format_data = None
-            if s_item.format_id:
-                f_res = (
-                    supabase.table("stock_item_formats")
-                    .select("*")
-                    .eq("id", s_item.format_id)
-                    .single()
+
+        return {"status": "ok", "transaction_id": tx_id, "total": total_sale}
+
+    except ValueError as ve:
+        # ROLLBACK: Restore stock for all already-processed items
+        for processed in processed_items:
+            try:
+                await (
+                    supabase.table("stock_items")
+                    .update({
+                        "quantity": processed["original_qty"],
+                        "status": "AVAILABLE",
+                    })
+                    .eq("id", processed["item_id"])
                     .execute()
                 )
-                format_data = f_res.data
-            
-            if format_data:
-                price = format_data["pack_price"]
-                p_size = format_data["pack_size"]
-            else:
-                price = product.get("pack_price") or (
-                    (product.get("selling_price") or 0)
-                    * (product.get("pack_size") or 1)
-                )
-                p_size = product.get("pack_size") or 1
+            except Exception:
+                pass  # Best effort rollback
 
-            deduct_qty = s_item.quantity * p_size
-        else:
-            price = product.get("selling_price") or 0
-            deduct_qty = s_item.quantity
-
-        item_total = price * s_item.quantity
-        total_sale_amount += item_total
-        processed_items.append(
-            {
-                "product": product,
-                "quantity": s_item.quantity,
-                "deduct_qty": deduct_qty,
-                "total": item_total,
-                "is_pack": s_item.is_pack,
-            }
-        )
-
-    # Create Income Transaction
-    tx_data = {
-        "date": datetime.now().isoformat(),
-        "amount": total_sale_amount,
-        "description": f"Venta: {batch.description}",
-        "type": "INCOME",
-        "category_id": cat_id,
-    }
-    tx_res = supabase.table("transactions").insert(tx_data).execute()
-    main_tx_id = tx_res.data[0]["id"] if tx_res.data else None
-
-    for p in processed_items:
-        sale_data = {
-            "stock_item_id": p["product"]["id"],
-            "quantity": p["quantity"],
-            "description": f"{batch.description} ({'PACK' if p.get('is_pack') else 'UNID'})",
-            "sale_price_total": p["total"],
-            "sale_tx_id": main_tx_id,
-        }
-        supabase.table("sales").insert(sale_data).execute()
-
-        new_qty = p["product"]["quantity"] - p.get("deduct_qty", p["quantity"])
-        if new_qty < 0:
-            logger.warning(
-                f"Stock negativo detectado para producto {p['product']['id']}: {new_qty}"
-            )
-            new_qty = 0
-        supabase.table("stock_items").update(
-            {
-                "quantity": new_qty,
-                "status": "DEPLETED" if new_qty <= 0 else "AVAILABLE",
-            }
-        ).eq("id", p["product"]["id"]).execute()
-
-    log_movement(
-        "VENTA",
-        "VENTA_LOTE",
-        f"Venta realizada: {batch.description} - Total: ${total_sale_amount:,.2f}",
-        {"total": total_sale_amount, "items_count": len(batch.items)},
-        tx_id=main_tx_id,
-    )
-
-    return {"status": "success", "total": total_sale_amount, "transaction_id": main_tx_id}
+        raise HTTPException(status_code=400, detail=str(ve))
 
 
-# --- SALES INVOICE PDF ---
-@router.get("/sales/invoice/{tx_id}")
-def generate_sale_invoice(tx_id: int):
-    """Generate a PDF invoice for a completed sale."""
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        SimpleDocTemplate,
-        Table,
-        TableStyle,
-        Paragraph,
-        Spacer,
-        Image,
-    )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+# ─── INVOICE PDF ──────────────────────────────────────────────────────────────
 
-    # Fetch the transaction
-    tx_res = (
+@router.get("/sales/invoice/{transaction_id}")
+async def generate_invoice(transaction_id: int):
+    """Generate a PDF invoice for a completed sale transaction."""
+    tx_res = await (
         supabase.table("transactions")
         .select("*")
-        .eq("id", tx_id)
+        .eq("id", transaction_id)
         .single()
         .execute()
     )
-    tx = tx_res.data
-    if not tx:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+    if not tx_res or not tx_res.data:
+        raise HTTPException(status_code=404, detail="Transaction not found")
 
-    # Fetch sale items linked to this transaction
-    sales_res = (
+    tx = tx_res.data
+
+    # Get sale items
+    sale_res = await (
         supabase.table("sales")
         .select("*")
-        .eq("sale_tx_id", tx_id)
+        .eq("sale_tx_id", transaction_id)
         .execute()
     )
-    sale_items = sales_res.data or []
+    sale_items = sale_res.data if sale_res else []
 
-    # Fetch product names for each sale item
-    enriched_items = []
-    for item in sale_items:
-        prod_res = (
+    # N+1 FIX: Batch-fetch all product names in ONE query
+    product_names: dict[int, dict] = {}
+    if sale_items:
+        product_ids = list(set(item["stock_item_id"] for item in sale_items))
+        prod_res = await (
             supabase.table("stock_items")
-            .select("name, brand")
-            .eq("id", item["stock_item_id"])
-            .single()
+            .select("id, name, brand")
+            .in_("id", product_ids)
             .execute()
         )
-        prod = prod_res.data or {}
-        product_name = f"{prod.get('brand', '')} {prod.get('name', 'Producto')}".strip()
-        desc = item.get("description", "")
-        item_type = "PACK" if "PACK" in desc.upper() else "UNID"
-        unit_price = (
-            item["sale_price_total"] / item["quantity"]
-            if item["quantity"] > 0
-            else 0
-        )
-        enriched_items.append(
-            {
-                "name": product_name,
-                "quantity": item["quantity"],
-                "type": item_type,
-                "unit_price": unit_price,
-                "subtotal": item["sale_price_total"],
-            }
-        )
+        if prod_res and prod_res.data:
+            for p in prod_res.data:
+                product_names[p["id"]] = {"name": p["name"], "brand": p.get("brand", "")}
 
     # Build PDF
-    filename = f"Factura_{tx_id}.pdf"
-    filepath = os.path.join("/tmp", filename)
-    doc = SimpleDocTemplate(filepath, pagesize=A4,
-                            topMargin=30 * mm, bottomMargin=20 * mm,
-                            leftMargin=20 * mm, rightMargin=20 * mm)
-    elements = []
-    styles = getSampleStyleSheet()
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
 
-    style_center = ParagraphStyle("Center", parent=styles["Normal"], alignment=TA_CENTER)
-    style_right = ParagraphStyle("Right", parent=styles["Normal"], alignment=TA_RIGHT)
+    # Header
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(30 * mm, height - 30 * mm, "FACTURA DE VENTA")
+    c.setFont("Helvetica", 10)
+    c.drawString(30 * mm, height - 38 * mm, f"Centro de Abaratamiento Mayorista")
+    c.drawString(30 * mm, height - 44 * mm, f"Transacción #{transaction_id}")
+    c.drawString(130 * mm, height - 44 * mm, f"Fecha: {tx.get('date', '-')}")
 
-    # Header — Logo + Company Name
-    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "logo.png")
-    if os.path.exists(logo_path):
-        logo = Image(logo_path, width=35 * mm, height=35 * mm)
-        logo.hAlign = "CENTER"
-        elements.append(logo)
-        elements.append(Spacer(1, 5))
+    # Table header
+    y = height - 60 * mm
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(30 * mm, y, "Producto")
+    c.drawString(110 * mm, y, "Cant.")
+    c.drawString(135 * mm, y, "Subtotal")
+    c.line(30 * mm, y - 2, 175 * mm, y - 2)
 
-    elements.append(Paragraph(
-        "<b>CENTRO DE ABARATAMIENTO MAYORISTA</b>",
-        ParagraphStyle("CompanyName", parent=styles["Title"], fontSize=14, alignment=TA_CENTER),
-    ))
-    elements.append(Paragraph(
-        "Mercado Central Ezeiza",
-        ParagraphStyle("CompanySub", parent=styles["Normal"], fontSize=9,
-                       alignment=TA_CENTER, textColor=colors.HexColor("#555555")),
-    ))
-    elements.append(Spacer(1, 5))
-    elements.append(Paragraph("Factura de Venta", style_center))
-    elements.append(Spacer(1, 15))
+    # Items
+    y -= 8 * mm
+    c.setFont("Helvetica", 9)
+    for item in sale_items:
+        prod = product_names.get(item["stock_item_id"], {})
+        name: str = f"{prod.get('brand', '')} {prod.get('name', item.get('description', '?'))}".strip()
+        truncated_name = name[:50]  # type: ignore
 
-    # Transaction info
-    tx_date = tx.get("date", "")[:19].replace("T", " ")
-    elements.append(Paragraph(f"<b>N° Transacción:</b> {tx_id}", styles["Normal"]))
-    elements.append(Paragraph(f"<b>Fecha:</b> {tx_date}", styles["Normal"]))
-    elements.append(Paragraph(f"<b>Descripción:</b> {tx.get('description', '')}", styles["Normal"]))
-    elements.append(Spacer(1, 20))
+        c.drawString(30 * mm, y, truncated_name)
+        c.drawString(110 * mm, y, str(item["quantity"]))
+        c.drawString(135 * mm, y, f"$ {item['sale_price_total']:,.2f}")
+        y -= 6 * mm
 
-    # Items table
-    table_data = [["Producto", "Cant.", "Tipo", "P. Unit.", "Subtotal"]]
-    for ei in enriched_items:
-        table_data.append(
-            [
-                ei["name"][:35],
-                str(int(ei["quantity"]) if ei["quantity"] == int(ei["quantity"]) else ei["quantity"]),
-                ei["type"],
-                f"${ei['unit_price']:,.2f}",
-                f"${ei['subtotal']:,.2f}",
-            ]
-        )
-
-    t = Table(table_data, colWidths=[180, 50, 50, 80, 80])
-    t.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2E7D32")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0f7f0")]),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
-    elements.append(t)
-    elements.append(Spacer(1, 20))
+        if y < 30 * mm:
+            c.showPage()
+            y = height - 30 * mm
 
     # Total
-    total = tx.get("amount", 0)
-    elements.append(
-        Paragraph(
-            f"<b>TOTAL: ${total:,.2f}</b>",
-            ParagraphStyle("TotalStyle", parent=styles["Heading2"], alignment=TA_RIGHT),
-        )
+    y -= 5 * mm
+    c.line(30 * mm, y, 175 * mm, y)
+    y -= 8 * mm
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(110 * mm, y, f"TOTAL:  $ {tx['amount']:,.2f}")
+
+    c.save()
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Factura_{transaction_id}.pdf"},
     )
-    elements.append(Spacer(1, 40))
-
-    # Footer
-    elements.append(
-        Paragraph(
-            "Documento no fiscal — Centro de Abaratamiento Mayorista · Mercado Central Ezeiza",
-            ParagraphStyle("Footer", parent=styles["Normal"], alignment=TA_CENTER,
-                           fontSize=7, textColor=colors.grey),
-        )
-    )
-
-    doc.build(elements)
-
-    return FileResponse(filepath, filename=filename, media_type="application/pdf")

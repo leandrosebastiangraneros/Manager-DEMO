@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { API_URL } from '../config';
+import { API_URL, authHeaders } from '../config';
 import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 
@@ -13,8 +13,8 @@ const Dashboard = () => {
     const fetchAllData = async () => {
         try {
             const [statsRes, stockRes] = await Promise.all([
-                fetch(`${API_URL}/dashboard-stats`),
-                fetch(`${API_URL}/stock`)
+                fetch(`${API_URL}/dashboard-stats`, { headers: authHeaders() }),
+                fetch(`${API_URL}/stock`, { headers: authHeaders() })
             ]);
 
             if (statsRes.ok) {

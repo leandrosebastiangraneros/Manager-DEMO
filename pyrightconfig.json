@@ -1,0 +1,15 @@
+{
+    "venvPath": ".",
+    "venv": "venv",
+    "executionEnvironments": [
+        {
+            "root": "backend",
+            "extraPaths": [
+                "backend"
+            ]
+        }
+    ],
+    "pythonPlatform": "Windows",
+    "reportMissingImports": "warning",
+    "reportMissingModuleSource": "none"
+}

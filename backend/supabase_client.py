@@ -1,158 +1,256 @@
+"""
+SupabaseLite — Lightweight async Supabase REST client using httpx.
+
+Provides a unified QueryBuilder for all operations (select, insert, update,
+upsert, delete) with consistent filter chaining.
+"""
+
 import os
-from typing import Optional
-import httpx  # type: ignore[import-untyped]
-from dotenv import load_dotenv  # type: ignore[import-untyped]
-import logging
+from typing import Any, Optional
+import httpx  # type: ignore
+from dotenv import load_dotenv  # type: ignore
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+SUPABASE_URL = (
+    os.getenv("SUPABASE_URL")
+    or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    or ""
+)
+SUPABASE_KEY = (
+    os.getenv("SUPABASE_KEY")
+    or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    or ""
+)
 
-class SupabaseLite:
-    def __init__(self):
-        self.url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-        self.key = os.environ.get("SUPABASE_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-        
-        if not self.url or not self.key:
-            self.initialized = False
-            self._client = None
-        else:
-            self.url = self.url.rstrip('/')
-            self.base_url = f"{self.url}/rest/v1"
-            self.headers = {
-                "apikey": self.key,
-                "Authorization": f"Bearer {self.key}",
-                "Content-Type": "application/json",
-                "Prefer": "return=representation"
-            }
-            self.initialized = True
-            # Reusable HTTP client with connection pooling
-            self._client = httpx.Client(
-                headers=self.headers,
-                timeout=30.0,
-                limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
-            )
-
-    def table(self, table_name: str):
-        if not self.initialized or not self._client:
-            raise ValueError("Supabase Client NOT initialized. Check SUPABASE_URL and SUPABASE_KEY environment variables.")
-        return SupabaseTable(self, table_name)
-
-    def close(self) -> None:
-        """Close the underlying HTTP client."""
-        client = self._client
-        self._client = None
-        if client is not None:
-            client.close()
-
-class SupabaseTable:
-    def __init__(self, client: SupabaseLite, table_name: str):
-        self.client = client
-        self.table_name = table_name
-
-    def select(self, columns: str = "*"):
-        class Chain:
-            def __init__(self, table, cols):
-                self.table = table
-                self.params = {"select": cols}
-                self.extra_headers = {}
-                self.is_single = False
-
-            def eq(self, col, val):
-                if val is not None: self.params[col] = f"eq.{val}"
-                return self
-                
-            def gte(self, col, val): self.params[col] = f"gte.{val}"; return self
-            def lt(self, col, val): self.params[col] = f"lt.{val}"; return self
-            def order(self, col, desc=True): self.params['order'] = f"{col}.{'desc' if desc else 'asc'}"; return self
-            def range(self, start, end): self.extra_headers["Range"] = f"{start}-{end}"; return self
-            def limit(self, l): self.params['limit'] = l; return self
-            def single(self): self.is_single = True; return self
-            def ilike(self, col, val): self.params[col] = f"ilike.{val}"; return self
-
-            def execute(self):
-                http = self.table.client._client
-                url = f"{self.table.client.base_url}/{self.table.table_name}"
-                headers = {**self.extra_headers} if self.extra_headers else None
-                response = http.get(url, headers=headers, params=self.params)
-                if response.status_code >= 400:
-                    raise Exception(f"Supabase GET Error {response.status_code}: {response.text}")
-                data = response.json()
-                if self.is_single:
-                    if isinstance(data, list) and len(data) > 0: return SupabaseResponse(response, data[0])
-                    return SupabaseResponse(response, None)
-                return SupabaseResponse(response, data)
-        return Chain(self, columns)
-
-    def insert(self, data: dict):
-        class Operation:
-            def __init__(self, table, payload):
-                self.table = table
-                self.payload = payload
-            def execute(self):
-                http = self.table.client._client
-                url = f"{self.table.client.base_url}/{self.table.table_name}"
-                response = http.post(url, json=self.payload)
-                if response.status_code >= 400:
-                    raise Exception(f"Supabase POST Error {response.status_code}: {response.text}")
-                return SupabaseResponse(response, response.json())
-        return Operation(self, data)
-
-    def update(self, data: dict):
-        class Operation:
-            def __init__(self, table, payload):
-                self.table = table
-                self.payload = payload
-                self.params = {}
-
-            def eq(self, col, val): self.params[col] = f"eq.{val}"; return self
-            
-            def execute(self):
-                http = self.table.client._client
-                url = f"{self.table.client.base_url}/{self.table.table_name}"
-                response = http.patch(url, json=self.payload, params=self.params)
-                if response.status_code >= 400:
-                    raise Exception(f"Supabase PATCH Error {response.status_code}: {response.text}")
-                return SupabaseResponse(response, response.json())
-        return Operation(self, data)
-
-    def upsert(self, data: list, on_conflict: Optional[str] = None):
-        class Operation:
-            def __init__(self, table, payload, conflict_col):
-                self.table = table
-                self.payload = payload
-                self.conflict_col = conflict_col
-                
-            def execute(self):
-                http = self.table.client._client
-                url = f"{self.table.client.base_url}/{self.table.table_name}"
-                headers = {"Prefer": "resolution=merge-duplicates,return=representation"}
-                if self.conflict_col: headers["Prefer"] += f",on_conflict={self.conflict_col}"
-                response = http.post(url, headers=headers, json=self.payload)
-                if response.status_code >= 400:
-                    raise Exception(f"Supabase UPSERT Error {response.status_code}: {response.text}")
-                return SupabaseResponse(response, response.json())
-        return Operation(self, data, on_conflict)
-
-    def delete(self):
-        class Operation:
-            def __init__(self, table):
-                self.table = table
-                self.params = {}
-            def eq(self, col, val): self.params[col] = f"eq.{val}"; return self
-            def execute(self):
-                http = self.table.client._client
-                url = f"{self.table.client.base_url}/{self.table.table_name}"
-                response = http.delete(url, params=self.params)
-                if response.status_code >= 400:
-                    raise Exception(f"Supabase DELETE Error {response.status_code}: {response.text}")
-                return SupabaseResponse(response, response.json() if response.text else [])
-        return Operation(self)
+# ─── Response Wrapper ────────────────────────────────────────────────────────
 
 class SupabaseResponse:
-    def __init__(self, response, data=None):
-        self.status_code = response.status_code
-        self.data = data
+    """Wraps the httpx response into a convenient .data / .error interface."""
 
-# Singleton
-supabase = SupabaseLite()
+    def __init__(self, response: httpx.Response):
+        self._response = response
+        self.status_code = response.status_code
+        self.data: list[Any] | dict[str, Any] | Any = []
+        self.error: Optional[dict[str, Any]] = None
+
+        if 200 <= response.status_code < 300:
+            try:
+                self.data = response.json()
+            except Exception:
+                self.data = []
+            self.error = None
+        else:
+            self.data = []
+            try:
+                self.error = response.json()
+            except Exception:
+                self.error = {"message": response.text, "code": response.status_code}
+
+    def __bool__(self):
+        return self.error is None
+
+    def __repr__(self):
+        return f"<SupabaseResponse status={self.status_code} data_count={len(self.data) if isinstance(self.data, list) else 1}>"
+
+
+# ─── Unified Query Builder ───────────────────────────────────────────────────
+
+class QueryBuilder:
+    """
+    Unified builder for all Supabase REST operations.
+
+    Usage:
+        # SELECT
+        res = await sb.table("x").select("*").eq("id", 1).execute()
+
+        # INSERT
+        res = await sb.table("x").insert({"name": "y"}).execute()
+
+        # UPDATE with filters
+        res = await sb.table("x").update({"qty": 5}).eq("id", 1).execute()
+
+        # DELETE with filters
+        res = await sb.table("x").delete().eq("id", 1).execute()
+
+        # UPSERT
+        res = await sb.table("x").upsert([...], on_conflict="name").execute()
+    """
+
+    def __init__(self, client: httpx.AsyncClient, url: str, headers: dict, table_name: str):
+        self._client = client
+        self._base_url = f"{url}/rest/v1/{table_name}"
+        self._headers = dict(headers)
+        self._params: dict[str, str] = {}
+        self._method = "GET"
+        self._body: Any = None
+        self._is_single = False
+        self._is_count = False
+
+    # ── Operation Setters ─────────────────────────────────────────────────
+
+    def select(self, columns: str = "*"):
+        self._method = "GET"
+        self._params["select"] = columns
+        return self
+
+    def insert(self, data):
+        self._method = "POST"
+        self._body = data
+        self._headers["Prefer"] = "return=representation"
+        return self
+
+    def update(self, data: dict):
+        self._method = "PATCH"
+        self._body = data
+        self._headers["Prefer"] = "return=representation"
+        return self
+
+    def upsert(self, data, on_conflict: str = ""):
+        self._method = "POST"
+        self._body = data
+        prefer = "return=representation,resolution=merge-duplicates"
+        self._headers["Prefer"] = prefer
+        if on_conflict:
+            self._params["on_conflict"] = on_conflict
+        return self
+
+    def delete(self):
+        self._method = "DELETE"
+        self._headers["Prefer"] = "return=representation"
+        return self
+
+    # ── Filters (available for ALL operations) ────────────────────────────
+
+    def eq(self, col: str, val):
+        self._params[col] = f"eq.{val}"
+        return self
+
+    def neq(self, col: str, val):
+        self._params[col] = f"neq.{val}"
+        return self
+
+    def gt(self, col: str, val):
+        self._params[col] = f"gt.{val}"
+        return self
+
+    def gte(self, col: str, val):
+        self._params[col] = f"gte.{val}"
+        return self
+
+    def lt(self, col: str, val):
+        self._params[col] = f"lt.{val}"
+        return self
+
+    def lte(self, col: str, val):
+        self._params[col] = f"lte.{val}"
+        return self
+
+    def like(self, col: str, val: str):
+        self._params[col] = f"like.{val}"
+        return self
+
+    def ilike(self, col: str, val: str):
+        self._params[col] = f"ilike.{val}"
+        return self
+
+    def in_(self, col: str, values: list):
+        """Filter where column value is in a list: .in_("id", [1, 2, 3])"""
+        formatted = ",".join(str(v) for v in values)
+        self._params[col] = f"in.({formatted})"
+        return self
+
+    def is_(self, col: str, val):
+        self._params[col] = f"is.{val}"
+        return self
+
+    # ── Modifiers ─────────────────────────────────────────────────────────
+
+    def order(self, col: str, desc: bool = False):
+        direction = "desc" if desc else "asc"
+        self._params["order"] = f"{col}.{direction}"
+        return self
+
+    def limit(self, n: int):
+        self._params["limit"] = str(n)
+        return self
+
+    def range(self, start: int, end: int):
+        self._headers["Range"] = f"{start}-{end}"
+        return self
+
+    def single(self):
+        """Expect exactly one result. Response .data will be a dict instead of list."""
+        self._is_single = True
+        self._headers["Accept"] = "application/vnd.pgrst.object+json"
+        return self
+
+    # ── Execute ───────────────────────────────────────────────────────────
+
+    async def execute(self) -> SupabaseResponse:
+        """Execute the built query and return a SupabaseResponse."""
+        kwargs: dict = {"headers": self._headers, "params": self._params}
+
+        if self._method == "GET":
+            response = await self._client.get(self._base_url, **kwargs)
+        elif self._method == "POST":
+            response = await self._client.post(self._base_url, json=self._body, **kwargs)
+        elif self._method == "PATCH":
+            response = await self._client.patch(self._base_url, json=self._body, **kwargs)
+        elif self._method == "DELETE":
+            response = await self._client.delete(self._base_url, **kwargs)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {self._method}")
+
+        return SupabaseResponse(response)
+
+
+# ─── Main Client ─────────────────────────────────────────────────────────────
+
+class SupabaseLite:
+    """
+    Lightweight async Supabase client.
+
+    Usage:
+        sb = SupabaseLite(url, key)
+        await sb.open()
+        res = await sb.table("stock_items").select("*").execute()
+        await sb.close()
+    """
+
+    def __init__(self, url: str, key: str):
+        self.url = url.rstrip("/")
+        self.key = key
+        self._headers = {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        }
+        self._client: httpx.AsyncClient | None = None
+
+    async def open(self):
+        """Initialize the async HTTP client with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+
+    async def close(self):
+        """Close the HTTP client and release connections."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    def table(self, name: str) -> QueryBuilder:
+        """Start building a query for the given table."""
+        if self._client is None or self._client.is_closed:
+            raise RuntimeError(
+                "SupabaseLite client is not open. Call `await sb.open()` first."
+            )
+        return QueryBuilder(self._client, self.url, self._headers, name)
+
+
+# ─── Singleton ────────────────────────────────────────────────────────────────
+
+supabase = SupabaseLite(SUPABASE_URL, SUPABASE_KEY)

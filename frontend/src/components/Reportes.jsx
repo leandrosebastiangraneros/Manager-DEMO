@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { API_URL } from '../config';
-import { useDialog } from '../context/DialogContext';
+import { API_URL, authHeaders, authHeadersMultipart } from '../config';
 import { formatMoney } from '../utils/formatters';
 import GlassContainer from './common/GlassContainer';
 import Button from './common/Button';
+import { toast } from 'sonner';
 import {
     AreaChart,
     Area,
@@ -15,7 +15,6 @@ import {
 } from 'recharts';
 
 const Reportes = () => {
-    const { showAlert } = useDialog();
     const [summary, setSummary] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -42,14 +41,14 @@ const Reportes = () => {
 
         try {
             // 1. Summary
-            const sumRes = await fetch(`${API_URL}/finances/summary?month=${month}&year=${year}`);
+            const sumRes = await fetch(`${API_URL}/finances/summary?month=${month}&year=${year}`, { headers: authHeaders() });
             if (sumRes.ok) {
                 const data = await sumRes.json();
                 setSummary(data);
             }
 
             // 2. Expenses (Documents)
-            const expRes = await fetch(`${API_URL}/expenses?month=${month}&year=${year}`);
+            const expRes = await fetch(`${API_URL}/expenses?month=${month}&year=${year}`, { headers: authHeaders() });
             if (expRes.ok) setExpenses(await expRes.json());
 
         } catch (err) {
@@ -62,7 +61,7 @@ const Reportes = () => {
     const loadPerformanceData = async () => {
         try {
             // We fetch the root which contains "recent_sales" based on backend investigation
-            const res = await fetch(`${API_URL}/`);
+            const res = await fetch(`${API_URL}/`, { headers: authHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 const sales = data.recent_sales || [];
@@ -90,7 +89,7 @@ const Reportes = () => {
     const handleUpload = async (e) => {
         e.preventDefault();
         if (!file || !amount || !desc) {
-            showAlert("Complete todos los campos", "error");
+            toast.error("Complete todos los campos");
             return;
         }
 
@@ -103,22 +102,23 @@ const Reportes = () => {
         try {
             const res = await fetch(`${API_URL}/expenses/upload`, {
                 method: 'POST',
+                headers: authHeadersMultipart(),
                 body: formData
             });
 
             if (res.ok) {
-                showAlert("Comprobante subido correctamente", "success");
+                toast.success("Comprobante subido correctamente");
                 setUploadModalOpen(false);
                 setDesc('');
                 setAmount('');
                 setFile(null);
                 loadData();
             } else {
-                showAlert("Error al subir", "error");
+                toast.error("Error al subir");
             }
         } catch (err) {
             console.error(err);
-            showAlert("Error de conexión", "error");
+            toast.error("Error de conexión");
         }
     };
 

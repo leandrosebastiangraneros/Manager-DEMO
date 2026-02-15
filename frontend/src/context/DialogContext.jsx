@@ -13,29 +13,33 @@ export const useDialog = () => {
 };
 
 export const DialogProvider = ({ children }) => {
-    // Alert State
-    const [alertState, setAlertState] = useState({ isOpen: false, message: '', type: 'info' }); // type: info, error, success
-
     // Confirm State
     const [confirmState, setConfirmState] = useState({ isOpen: false, message: '', title: 'CONFIRM ACTION' });
     const confirmResolver = useRef(null);
+    const confirmCallback = useRef(null);
 
-    // --- ALERT LOGIC ---
-    const showAlert = (message, type = 'info') => {
-        setAlertState({ isOpen: true, message, type });
-        // Auto dismiss after 3 seconds for simple info/success
-        if (type !== 'error') {
-            setTimeout(() => {
-                setAlertState(prev => ({ ...prev, isOpen: false }));
-            }, 3000);
+    /**
+     * showConfirm(message, callbackOrTitle?, title?)
+     *
+     * Usage A  (callback):  showConfirm("Sure?", () => doSomething())
+     * Usage B  (promise) :  const ok = await showConfirm("Sure?")
+     * Usage C  (title)   :  await showConfirm("Sure?", "DELETE")
+     */
+    const showConfirm = (message, callbackOrTitle, title) => {
+        let resolvedTitle = 'CONFIRM ACTION';
+
+        if (typeof callbackOrTitle === 'function') {
+            confirmCallback.current = callbackOrTitle;
+            resolvedTitle = title || 'CONFIRM ACTION';
+        } else if (typeof callbackOrTitle === 'string') {
+            resolvedTitle = callbackOrTitle;
+            confirmCallback.current = null;
+        } else {
+            confirmCallback.current = null;
         }
-    };
 
-    const closeAlert = () => setAlertState(prev => ({ ...prev, isOpen: false }));
+        setConfirmState({ isOpen: true, message, title: resolvedTitle });
 
-    // --- CONFIRM LOGIC ---
-    const showConfirm = (message, title = 'CONFIRM ACTION') => {
-        setConfirmState({ isOpen: true, message, title });
         return new Promise((resolve) => {
             confirmResolver.current = resolve;
         });
@@ -43,6 +47,12 @@ export const DialogProvider = ({ children }) => {
 
     const handleConfirm = (value) => {
         setConfirmState(prev => ({ ...prev, isOpen: false }));
+
+        if (value && confirmCallback.current) {
+            confirmCallback.current();
+            confirmCallback.current = null;
+        }
+
         if (confirmResolver.current) {
             confirmResolver.current(value);
             confirmResolver.current = null;
@@ -50,52 +60,8 @@ export const DialogProvider = ({ children }) => {
     };
 
     return (
-        <DialogContext.Provider value={{ showAlert, showConfirm }}>
+        <DialogContext.Provider value={{ showConfirm }}>
             {children}
-
-            {/* --- UI: ALERT MODAL (Toast Style) --- */}
-            {alertState.isOpen && (
-                <div className="fixed top-24 right-4 z-[9999] animate-[slideInRight_0.3s_ease-out]">
-                    <GlassContainer className={`p-0 min-w-[320px] max-w-md overflow-hidden flex shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-l-4 ${alertState.type === 'error' ? 'border-l-red-500 bg-red-500/5' :
-                        alertState.type === 'success' ? 'border-l-green-500 bg-green-500/5' :
-                            'border-l-accent bg-accent/5'
-                        }`}>
-                        <div className="p-4 flex items-start gap-4 w-full">
-                            <div className={`p-2 rounded-lg flex-none ${alertState.type === 'error' ? 'bg-red-500/10 text-red-500' :
-                                alertState.type === 'success' ? 'bg-green-500/10 text-green-500' :
-                                    'bg-accent/10 text-accent'
-                                }`}>
-                                <span className="material-icons text-xl">
-                                    {alertState.type === 'error' ? 'error_outline' :
-                                        alertState.type === 'success' ? 'check_circle' :
-                                            'info'}
-                                </span>
-                            </div>
-
-                            <div className="flex-1 py-1">
-                                <h4 className={`font-display font-bold text-sm uppercase tracking-wider mb-1 ${alertState.type === 'error' ? 'text-red-400' :
-                                    alertState.type === 'success' ? 'text-green-400' :
-                                        'text-accent'
-                                    }`}>
-                                    {alertState.type === 'error' ? 'ERROR DEL SISTEMA' :
-                                        alertState.type === 'success' ? 'OPERACIÓN EXITOSA' : 'NOTIFICACIÓN'}
-                                </h4>
-                                <p className="text-txt-primary text-sm leading-snug font-mono">
-                                    {alertState.message}
-                                </p>
-                            </div>
-
-                            <button
-                                onClick={closeAlert}
-                                className="text-txt-dim hover:text-white transition-colors -mr-1 -mt-1"
-                            >
-                                <span className="material-icons text-lg">close</span>
-                            </button>
-                        </div>
-                        {/* Progress bar animation could go here */}
-                    </GlassContainer>
-                </div>
-            )}
 
             {/* --- UI: CONFIRM MODAL --- */}
             {confirmState.isOpen && (

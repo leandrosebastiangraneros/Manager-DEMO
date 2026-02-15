@@ -1,109 +1,122 @@
 /**
- * Custom hooks for data fetching — centralize API calls and state management.
- * Use these hooks instead of inline fetch logic in components.
+ * useData — Generic data fetching hooks with error toasts and retry.
+ *
+ * Provides useFetch (generic), useProducts, useCategories, useFinances, useExpenses.
+ * All hooks automatically include auth headers.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { API_URL } from '../config';
+import { toast } from 'sonner';
+import { API_URL, authHeaders } from '../config';
 
 /**
- * Generic data fetcher hook.
- * @param {string} endpoint - API endpoint path (e.g., "/stock")
- * @param {object} options - { autoFetch, defaultValue, deps }
+ * Generic fetch hook with automatic retry and error toasts.
+ *
+ * @param {string} endpoint - API path (without base URL)
+ * @param {object} options - { skip, autoRetry, retries, dependencies }
  */
-export function useFetch(endpoint, { autoFetch = true, defaultValue = [], deps = [] } = {}) {
-    const [data, setData] = useState(defaultValue);
-    const [loading, setLoading] = useState(autoFetch);
+export function useFetch(endpoint, options = {}) {
+    const { skip = false, autoRetry = true, retries = 1, dependencies = [] } = options;
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(!skip);
     const [error, setError] = useState(null);
 
-    const fetchData = useCallback(async (queryParams = {}) => {
+    const fetchData = useCallback(async (attempt = 0) => {
+        if (skip) return;
         setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams(queryParams).toString();
-            const url = `${API_URL}${endpoint}${params ? `?${params}` : ''}`;
-            const res = await fetch(url);
+            const res = await fetch(`${API_URL}${endpoint}`, {
+                headers: authHeaders(),
+            });
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.detail || `Error ${res.status}`);
+                const errBody = await res.json().catch(() => ({ detail: res.statusText }));
+                throw new Error(errBody.detail || `Error ${res.status}`);
             }
-            const result = await res.json();
-            setData(result);
-            return result;
+            const json = await res.json();
+            setData(json);
         } catch (err) {
+            if (autoRetry && attempt < retries) {
+                // Exponential backoff: 500ms, 1000ms
+                const delay = 500 * Math.pow(2, attempt);
+                setTimeout(() => fetchData(attempt + 1), delay);
+                return;
+            }
             setError(err.message);
-            console.error(`[useFetch ${endpoint}]`, err);
-            return defaultValue;
+            toast.error(`Error cargando datos`, {
+                description: err.message,
+                duration: 4000,
+            });
         } finally {
             setLoading(false);
         }
-    }, [endpoint]);
+    }, [endpoint, skip, autoRetry, retries]);
 
     useEffect(() => {
-        if (autoFetch) fetchData();
-    }, [autoFetch, ...deps]);
+        fetchData();
+    }, [fetchData, ...dependencies]);
 
-    return { data, loading, error, refetch: fetchData, setData };
+    return { data, loading, error, refetch: () => fetchData(0) };
 }
 
+
 /**
- * Hook for products/stock data.
+ * Fetch all products (stock items).
  */
 export function useProducts() {
-    const { data: products, loading, error, refetch, setData } = useFetch('/stock');
-
-    const availableProducts = products.filter(p => p.status === 'AVAILABLE');
-    const lowStockProducts = products.filter(p => p.quantity <= (p.min_stock_alert || 5));
-
+    const { data, loading, error, refetch } = useFetch('/stock');
     return {
-        products,
-        availableProducts,
-        lowStockProducts,
+        products: data || [],
         loading,
         error,
         refetch,
-        setProducts: setData,
     };
 }
 
-/**
- * Hook for categories data.
- */
-export function useCategories() {
-    return useFetch('/categories');
-}
 
 /**
- * Hook for monthly finances data.
+ * Fetch categories, optionally filtered by type.
+ */
+export function useCategories(type = null) {
+    const endpoint = type ? `/categories?type=${type}` : '/categories';
+    const { data, loading, error, refetch } = useFetch(endpoint);
+    return {
+        categories: data || [],
+        loading,
+        error,
+        refetch,
+    };
+}
+
+
+/**
+ * Fetch financial summary for a given month/year.
  */
 export function useFinances(month, year) {
-    const { data, loading, error, refetch } = useFetch(
-        '/finances/summary',
-        { autoFetch: false, defaultValue: { total_income: 0, total_expense: 0, net_balance: 0 } }
-    );
-
-    useEffect(() => {
-        if (month && year) {
-            refetch({ month, year });
-        }
-    }, [month, year]);
-
-    return { finances: data, loading, error, refetch };
+    const endpoint = `/finances/summary?month=${month}&year=${year}`;
+    const { data, loading, error, refetch } = useFetch(endpoint, {
+        dependencies: [month, year],
+    });
+    return {
+        finances: data || { total_income: 0, total_expense: 0, net_balance: 0 },
+        loading,
+        error,
+        refetch,
+    };
 }
 
+
 /**
- * Hook for expenses data.
+ * Fetch expenses for a given month/year.
  */
 export function useExpenses(month, year) {
-    const { data: expenses, loading, error, refetch } = useFetch(
-        '/expenses',
-        { autoFetch: false, defaultValue: [] }
-    );
-
-    useEffect(() => {
-        if (month && year) {
-            refetch({ month, year });
-        }
-    }, [month, year]);
-
-    return { expenses, loading, error, refetch };
+    const endpoint = `/expenses?month=${month}&year=${year}`;
+    const { data, loading, error, refetch } = useFetch(endpoint, {
+        dependencies: [month, year],
+    });
+    return {
+        expenses: data || [],
+        loading,
+        error,
+        refetch,
+    };
 }

@@ -6,7 +6,6 @@ import React, { useState } from 'react';
 import { formatMoney } from '../utils/formatters';
 import { useStock } from '../hooks/useStock';
 import EditStockModal from './stock/EditStockModal';
-import SellModal from './stock/SellModal';
 import PriceUpdateModal from './stock/PriceUpdateModal';
 
 const Stock = () => {
@@ -290,22 +289,12 @@ const Stock = () => {
                 onSubmit={stock.handleEditSubmit}
             />
 
-            <SellModal
-                isOpen={stock.isSellModalOpen}
-                onClose={() => stock.setIsSellModalOpen(false)}
-                selectedItem={stock.selectedItem}
-                sellPriceUnit={stock.sellPriceUnit} setSellPriceUnit={stock.setSellPriceUnit}
-                sellQuantity={stock.sellQuantity} setSellQuantity={stock.setSellQuantity}
-                workDesc={stock.workDesc} setWorkDesc={stock.setWorkDesc}
-                onSubmit={stock.handleSellSubmit}
-            />
-
             <PriceUpdateModal
                 isOpen={isPriceModalOpen}
                 onClose={() => setIsPriceModalOpen(false)}
                 categories={stock.categories}
                 onUpdateComplete={() => {
-                    stock.fetchData();
+                    stock.fetchStock();
                     setIsPriceModalOpen(false);
                 }}
             />

@@ -3,7 +3,7 @@
  * Extracted from Ventas.jsx for separation of concerns.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { API_URL } from '../config';
+import { API_URL, authHeaders } from '../config';
 import { toast } from 'sonner';
 
 export function useCart(products, fetchData) {
@@ -119,7 +119,7 @@ export function useCart(products, fetchData) {
 
             const res = await fetch(`${API_URL}/sales`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
 
@@ -128,7 +128,7 @@ export function useCart(products, fetchData) {
                 // Auto-download invoice PDF
                 if (data.transaction_id) {
                     try {
-                        const pdfRes = await fetch(`${API_URL}/sales/invoice/${data.transaction_id}`);
+                        const pdfRes = await fetch(`${API_URL}/sales/invoice/${data.transaction_id}`, { headers: authHeaders() });
                         if (pdfRes.ok) {
                             const blob = await pdfRes.blob();
                             const url = window.URL.createObjectURL(blob);
