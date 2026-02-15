@@ -39,6 +39,9 @@ class StockItemFormatBase(BaseModel):
 class StockItemFormatCreate(StockItemFormatBase):
     stock_item_id: Optional[int] = None
 
+class FormatCreate(StockItemFormatCreate):
+    pass
+
 class StockItemFormat(StockItemFormatBase):
     id: int
     stock_item_id: int
@@ -125,6 +128,9 @@ class BatchSaleItem(BaseModel):
     quantity: float
     is_pack: bool = False
     format_id: Optional[int] = None # ID del formato específico si is_pack es True
+
+class SellItem(BaseModel):
+    quantity: float
 
 class BatchSaleRequest(BaseModel):
     items: List[BatchSaleItem]
