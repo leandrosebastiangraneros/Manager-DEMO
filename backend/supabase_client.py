@@ -56,29 +56,15 @@ class SupabaseResponse:
 
 # ─── Unified Query Builder ───────────────────────────────────────────────────
 
+# ─── Unified Query Builder ───────────────────────────────────────────────────
+
 class QueryBuilder:
     """
     Unified builder for all Supabase REST operations.
-
-    Usage:
-        # SELECT
-        res = await sb.table("x").select("*").eq("id", 1).execute()
-
-        # INSERT
-        res = await sb.table("x").insert({"name": "y"}).execute()
-
-        # UPDATE with filters
-        res = await sb.table("x").update({"qty": 5}).eq("id", 1).execute()
-
-        # DELETE with filters
-        res = await sb.table("x").delete().eq("id", 1).execute()
-
-        # UPSERT
-        res = await sb.table("x").upsert([...], on_conflict="name").execute()
     """
 
-    def __init__(self, client: httpx.AsyncClient, url: str, headers: dict, table_name: str):
-        self._client = client
+    def __init__(self, supabase_instance, url: str, headers: dict, table_name: str):
+        self._sb = supabase_instance
         self._base_url = f"{url}/rest/v1/{table_name}"
         self._headers = dict(headers)
         self._params: dict[str, str] = {}
@@ -189,16 +175,17 @@ class QueryBuilder:
 
     async def execute(self) -> SupabaseResponse:
         """Execute the built query and return a SupabaseResponse."""
+        client = await self._sb.get_client()
         kwargs: dict = {"headers": self._headers, "params": self._params}
 
         if self._method == "GET":
-            response = await self._client.get(self._base_url, **kwargs)
+            response = await client.get(self._base_url, **kwargs)
         elif self._method == "POST":
-            response = await self._client.post(self._base_url, json=self._body, **kwargs)
+            response = await client.post(self._base_url, json=self._body, **kwargs)
         elif self._method == "PATCH":
-            response = await self._client.patch(self._base_url, json=self._body, **kwargs)
+            response = await client.patch(self._base_url, json=self._body, **kwargs)
         elif self._method == "DELETE":
-            response = await self._client.delete(self._base_url, **kwargs)
+            response = await client.delete(self._base_url, **kwargs)
         else:
             raise ValueError(f"Unsupported HTTP method: {self._method}")
 
@@ -210,12 +197,8 @@ class QueryBuilder:
 class SupabaseLite:
     """
     Lightweight async Supabase client.
-
-    Usage:
-        sb = SupabaseLite(url, key)
-        await sb.open()
-        res = await sb.table("stock_items").select("*").execute()
-        await sb.close()
+    
+    Supports lazy connection for serverless environments.
     """
 
     def __init__(self, url: str, key: str):
@@ -227,6 +210,14 @@ class SupabaseLite:
             "Content-Type": "application/json",
         }
         self._client: httpx.AsyncClient | None = None
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """Get existing client or create a new one if closed."""
+        if self._client is None or self._client.is_closed:
+            await self.open()
+        if self._client is None: # Should not happen unless open() fails silently
+             raise RuntimeError("Failed to initialize httpx client")
+        return self._client
 
     async def open(self):
         """Initialize the async HTTP client with connection pooling."""
@@ -244,11 +235,8 @@ class SupabaseLite:
 
     def table(self, name: str) -> QueryBuilder:
         """Start building a query for the given table."""
-        if self._client is None or self._client.is_closed:
-            raise RuntimeError(
-                "SupabaseLite client is not open. Call `await sb.open()` first."
-            )
-        return QueryBuilder(self._client, self.url, self._headers, name)
+        # No longer raises error here. Connection is checked/opened in execute().
+        return QueryBuilder(self, self.url, self._headers, name)
 
 
 # ─── Singleton ────────────────────────────────────────────────────────────────
